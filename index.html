@@ -296,8 +296,10 @@ const $ = id => document.getElementById(id);
 let lang = "ru";
 try { lang = localStorage.getItem("lang") || "ru"; } catch(e){}
 let phase = "intro", cat = null, found = null, rec = null, runId = 0;
-let doneText = "", curText = "", lastErr = "", altText = "";
+let doneText = "", curText = "", lastErr = "", doneAlt = "", curAlt = "";
+let recLive = false, recLang = "", offset = 0, lastLen = 0, onLive = null;
 const heard = () => doneText + " " + curText;
+const alts = () => doneAlt + " " + curAlt;
 
 function log(msg){
   if (!DEBUG) return;
@@ -338,64 +340,69 @@ $("lang-ru").onclick = () => { lang="ru"; try{localStorage.setItem("lang",lang)}
 $("lang-en").onclick = () => { lang="en"; try{localStorage.setItem("lang",lang)}catch(e){} applyLang(); };
 
 function err(title, text){ $("err-title").textContent = title; $("err-text").textContent = text; show("err"); }
-function stopRec(){
+// Один постоянный распознаватель на всю сессию: iPhone пищит при каждом включении/выключении,
+// поэтому включаем один раз (на «Accept») и больше не выключаем. Вне отсчёта результаты игнорируются.
+function killRec(){
   if (!rec) return;
-  const r = rec; rec = null;
-  r.onend = r.onresult = r.onerror = null;
-  try { r.stop(); } catch(e){}
-  setTimeout(() => { try { r.abort(); } catch(e){} }, 300);
+  const r = rec; rec = null; recLive = false;
+  r.onend = r.onresult = r.onerror = r.onstart = r.onaudiostart = null;
+  try { r.abort(); } catch(e){}
 }
-
-function makeRec(id, onLive){
-  const r = new SR();
+function ensureRec(){
+  if (!SR) return false;
+  if (rec && recLang !== lang) killRec();
+  if (rec) { if (!recLive) { try { rec.start(); } catch(e){} } return true; }
+  const r = new SR(); rec = r; recLang = lang;
   r.lang = lang === "ru" ? "ru-RU" : "en-US";
-  r.continuous = !IOS;          // на iPhone непрерывный режим глючит — перезапускаем вручную
+  r.continuous = true;
   r.interimResults = true;
   r.maxAlternatives = 5;
-  r.onstart = () => { log("start"); onLive && onLive(); };
-  r.onaudiostart = () => { log("audio"); onLive && onLive(); };
+  const live = () => { recLive = true; log("live"); if (onLive) { const f = onLive; onLive = null; f(); } };
+  r.onstart = live; r.onaudiostart = live;
   r.onresult = e => {
-    let t = "";
-    for (let i = 0; i < e.results.length; i++) {
+    lastLen = e.results.length;
+    if (phase !== "listen") return;            // слушаем только во время отсчёта
+    let t = "", al = "";
+    for (let i = offset; i < e.results.length; i++) {
       t += " " + e.results[i][0].transcript;
-      for (let j = 1; j < e.results[i].length; j++) altText += " " + e.results[i][j].transcript;  // запасные варианты
+      for (let j = 1; j < e.results[i].length; j++) al += " " + e.results[i][j].transcript;
     }
-    curText = t;
+    curText = t; curAlt = al;
     log("heard: " + t.trim());
   };
   r.onerror = e => {
     lastErr = e.error; log("error: " + e.error);
-    if (id !== runId) return;
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-      runId++; stopRec(); err(T[lang].denied, T[lang].denied2);
+      runId++; killRec(); err(T[lang].denied, T[lang].denied2);
     }
   };
   r.onend = () => {
-    log("end");
-    if (id !== runId || phase !== "listen" || rec !== r) return;
-    doneText += " " + curText; curText = "";
-    try { r.start(); }
-    catch(e) { try { rec = makeRec(id); rec.start(); } catch(e2){ log("restart fail"); } }
+    log("end"); recLive = false;
+    doneText += " " + curText; doneAlt += " " + curAlt; curText = ""; curAlt = "";
+    offset = 0; lastLen = 0;
+    if (rec !== r) return;
+    try { r.start(); } catch(e) { log("restart fail"); }   // iOS иногда сам останавливает — перезапускаем
   };
-  return r;
+  try { r.start(); } catch(e) { log("start fail " + e); return false; }
+  return true;
 }
 
 function startRound(){
   if (!SR) return err(T[lang].noApi, T[lang].noApi2);
   const id = ++runId;
-  stopRec();
   const others = CATS.filter(c => c !== cat);
   cat = others[Math.floor(Math.random()*others.length)];
-  found = null; doneText = ""; curText = ""; altText = ""; lastErr = "";
+  found = null; doneText = ""; curText = ""; doneAlt = ""; curAlt = ""; lastErr = "";
+  offset = lastLen;   // всё, что прозвучало до раунда, не считается
   $("cat").textContent = cat[lang];
   $("count").textContent = String(DURATION/1000); $("bar").style.width = "0";
 
   // Отсчёт начинается, только когда микрофон реально включился
   let t0 = 0;
   const go = () => { if (!t0 && id === runId) { t0 = performance.now(); requestAnimationFrame(tick); } };
-  rec = makeRec(id, go);
-  try { rec.start(); } catch(e) { log("start fail " + e); return err(T[lang].noApi, T[lang].noApi2); }
+  if (!ensureRec()) return err(T[lang].noApi, T[lang].noApi2);
   show("listen");
+  if (recLive) go(); else onLive = go;
   setTimeout(go, 2500);
 
   let matchedAt = 0, lastH = "", lastChange = 0;
@@ -406,7 +413,7 @@ function startRound(){
     $("count").textContent = Math.max(0, Math.ceil((DURATION - el)/1000));
     const h = heard();
     if (h !== lastH) { lastH = h; lastChange = now; }
-    const m = matchAny(h + " " + altText);
+    const m = matchAny(h + " " + alts());
     if (m) { found = m; if (!matchedAt) matchedAt = now; }
     if (el >= DURATION + 300) return finish(id);   // таймер всегда доходит до конца
     requestAnimationFrame(tick);
@@ -537,13 +544,12 @@ function loadImg(src){
 
 async function finish(id){
   const text = heard();
-  stopRec();
   show("think");
   const thinkEl = document.querySelector('[data-t="think"]'); let ti = 0;
   thinkEl.textContent = T[lang].think[0];
   const cycle = setInterval(() => { thinkEl.textContent = T[lang].think[++ti % T[lang].think.length]; }, 700);
   const t0 = Date.now();
-  const all = text + " " + curText + " " + altText;
+  const all = text + " " + alts();
   // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
   // незнакомое слово → берём сказанное слово и ищем его картинку
   const inCat = match(cat, all);
@@ -581,13 +587,9 @@ async function finish(id){
 $("go").onclick = startRound;
 // Соглашение: микрофон запрашивается один раз — сразу после «Accept»
 $("agree").onchange = () => { $("accept").disabled = !$("agree").checked; };
-$("accept").onclick = async () => {
+$("accept").onclick = () => {
   $("accept").disabled = true;
-  try {
-    const st = await navigator.mediaDevices.getUserMedia({audio: true});
-    st.getTracks().forEach(t => t.stop());
-    log("mic granted");
-  } catch(e) { log("mic: " + e.name); }
+  ensureRec();            // запрос микрофона и единственный «пик» — прямо на нажатие Accept
   try { localStorage.setItem("accepted", "1"); } catch(e){}
   show("intro");
 };
