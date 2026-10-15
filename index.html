@@ -259,7 +259,8 @@ const CATS = [
   ["Свинья","Pig","🐷",["свинь*","свин*","поросен*","pig","pigs"]],
   ["Овца","Sheep","🐑",["овц*","баран*","sheep","lamb"]],
   ["Коза","Goat","🐐",["коз","коза","козу","козел","goat*"]],
-  ["Курица","Chicken","🐔",["куриц*","петух*","hen","rooster"]],
+  ["Курица","Chicken","🐔",["куриц*","hen","hens"]],
+  ["Петух","Rooster","🐓",["петух*","петуш*","rooster*","cock"]],
   ["Орёл","Eagle","🦅",["орел","орла","eagle*"]],
   ["Сова","Owl","🦉",["сов","сова","сову","совы","owl*"]],
   ["Попугай","Parrot","🦜",["попуга*","parrot*"]],
@@ -392,16 +393,21 @@ function log(msg){
 }
 
 const norm = s => s.toLowerCase().replace(/ё/g,"е");
+// Если названо несколько слов — побеждает ПЕРВОЕ (первая мысль), при равенстве — более точный ключ
 function match(category, text){
   const words = norm(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const starts = []; let acc = 0;
+  for (const w of words) { starts.push(acc); acc += w.length; }
   const glued = words.join("");
-  let best = null, score = 0;
+  const wordAt = off => { let i = 0; while (i + 1 < starts.length && starts[i + 1] <= off) i++; return i; };
+  let best = null, bestPos = Infinity, bestLen = 0;
   for (const it of category.items) for (const raw of it[3]) {
-    const k = norm(raw); let hit = false;
-    if (/[ -]/.test(k)) hit = glued.includes(k.replace(/[^\p{L}\p{N}]/gu,""));
-    else if (k.endsWith("*")) { const st = k.slice(0,-1); hit = words.some(w => w.startsWith(st)); }
-    else hit = words.includes(k);
-    if (hit && k.length > score) { best = it; score = k.length; }
+    const k = norm(raw); let pos = -1;
+    if (/[ -]/.test(k)) { const o = glued.indexOf(k.replace(/[^\p{L}\p{N}]/gu,"")); if (o >= 0) pos = wordAt(o); }
+    else if (k.endsWith("*")) { const st = k.slice(0,-1); pos = words.findIndex(w => w.startsWith(st)); }
+    else pos = words.indexOf(k);
+    if (pos < 0) continue;
+    if (pos < bestPos || (pos === bestPos && k.length > bestLen)) { best = it; bestPos = pos; bestLen = k.length; }
   }
   return best;
 }
@@ -520,8 +526,7 @@ function rawGuess(text){
   const words = text.trim().split(/\s+/).filter(w => w && !FILLER.has(norm(w).replace(/[^\p{L}\p{N}-]/gu,"")));
   const uniq = words.filter((w, i) => i === 0 || norm(w) !== norm(words[i-1]));
   if (!uniq.length) return null;
-  const last = uniq.slice(-2);
-  const pick = (last.length === 2 && norm(last[0]) === norm(last[1]) ? last.slice(1) : last).join(" ").replace(/[.,!?…]+$/,"");
+  const pick = uniq[0].replace(/[.,!?…]+$/,"");
   if (!pick) return null;
   const name = pick.charAt(0).toUpperCase() + pick.slice(1);
   const emoji = {"Уличная еда":"🍽️","Марка машины":"🚗","Животное":"🐾","Фрукт":"🧺","Страна":"🌍","Цветок":"💐","Любимый цвет":"🎨"}[cat.ru] || "🎯";
@@ -590,7 +595,7 @@ async function commonsImage(name){
       const q = encodeURIComponent((name + " " + PHOTO_HINT[cat.ru]).trim() + " filetype:bitmap");
       pages = Object.values(((await (await fetch(base + "generator=search&gsrnamespace=6&gsrlimit=10&gsrsearch=" + q, {signal: ctrl.signal})).json()).query || {}).pages || {})
         .sort((x,y) => (x.index||0) - (y.index||0))
-        .filter(p => p.imageinfo && /jpeg/.test(p.imageinfo[0].mime) && !/logo|map|karte|diagram|icon|emblem|plan|chart|drawing|sign|accident|crash|museum|factory|plant|headquarter|building|dealer|store|shop/i.test(p.title));
+        .filter(p => p.imageinfo && /jpeg/.test(p.imageinfo[0].mime) && !/logo|map|karte|diagram|icon|emblem|plan|chart|drawing|sign|accident|crash|museum|factory|plant|headquarter|building|dealer|store|shop|market|meat|butcher|cooked|roast|carcass/i.test(p.title));
       // название должно быть в имени файла — иначе это случайное фото
       const key = name.toLowerCase().split(/[\s-]+/)[0];
       pages = pages.filter(p => p.title.toLowerCase().includes(key) && !/rent|daito|office|station|garage|showroom|race|parade/i.test(p.title));
@@ -624,7 +629,12 @@ async function bestImage(r, enName){
     const m = await enwikiImage(CAR_MODEL[enName]);
     const ok = m && await loadImg(m); if (ok) return ok;
   }
-  const c = await commonsImage(enName || r.en);
+  const en = enName || r.en;
+  if (en && ["Животное","Фрукт","Цветок","Уличная еда"].includes(cat.ru)) {
+    const w = await enwikiImage(en);
+    const ok = w && await loadImg(w); if (ok) return ok;
+  }
+  const c = await commonsImage(en);
   return (c && await loadImg(c)) || (r.img && await loadImg(r.img)) || null;
 }
 
