@@ -32,7 +32,7 @@ def sparql(q):
             j = get(url, tries=2)
             rows = j["results"]["bindings"]
             log("  sparql via", name, "rows:", len(rows))
-            return rows
+            if rows: return rows
         except Exception as e:
             log("  sparql", name, "failed:", str(e)[:200])
     return []
@@ -59,6 +59,47 @@ def entities(ids, props="labels|descriptions|claims|sitelinks", langs="ru|en"):
         res.update(j.get("entities", {}))
         if i % 1000 == 0: log("  entities", i, "/", len(ids))
         time.sleep(0.2)
+    return res
+
+def top_titles():
+    """Самые читаемые статьи ru/en Википедии за последние 12 месяцев."""
+    import datetime
+    views = {}
+    d = datetime.date.today().replace(day=1)
+    months = []
+    for _ in range(12):
+        d = (d - datetime.timedelta(days=1)).replace(day=1); months.append(d)
+    for wiki in ["ru", "en"]:
+        for m in months:
+            url = f"https://wikimedia.org/api/rest_v1/metrics/pageviews/top/{wiki}.wikipedia/all-access/{m.year}/{m.month:02d}/all-days"
+            try:
+                j = get(url, tries=2)
+                for a in j["items"][0]["articles"]:
+                    t = a["article"]
+                    if ":" in t or t in ("Main_Page", "Заглавная_страница", "-"): continue
+                    views[(wiki, t)] = views.get((wiki, t), 0) + a["views"]
+            except Exception as e:
+                log("  pageviews fail", wiki, m, str(e)[:100])
+    log("top titles:", len(views))
+    return views
+
+def entities_by_titles(views):
+    res = {}
+    for wiki in ["ru", "en"]:
+        titles = [t for (w, t) in views if w == wiki]
+        for i in range(0, len(titles), 50):
+            chunk = titles[i:i + 50]
+            url = "https://www.wikidata.org/w/api.php?" + urllib.parse.urlencode({
+                "action": "wbgetentities", "sites": wiki + "wiki", "titles": "|".join(t.replace("_", " ") for t in chunk),
+                "props": "labels|descriptions|claims|sitelinks", "languages": "ru|en", "format": "json"})
+            try:
+                j = get(url)
+                for k, e in j.get("entities", {}).items():
+                    if k.startswith("Q") and "missing" not in e: res[k] = e
+            except Exception as e:
+                log("  titles fail", str(e)[:100])
+            time.sleep(0.2)
+        log("  resolved", wiki, "→ entities total", len(res))
     return res
 
 def lab(e, lang):
@@ -154,10 +195,18 @@ def main():
         ?x wdt:P31/wdt:P279* ?root . ?x wikibase:sitelinks ?sl . FILTER(?sl >= {plc}) }}""", "places")
     # не здания (страны, города и т.п.) отсекаем позже по наличию типа
 
-    log("fetching people entities:", len(people))
-    pe = entities(people.keys())
-    log("fetching place entities:", len(places))
-    pl = entities(places.keys())
+    # Главный источник — популярные статьи Википедии (кого реально ищут люди)
+    pop = entities_by_titles(top_titles())
+    pe = {k: e for k, e in pop.items() if "Q5" in ids_of(e, "P31")}
+    pl_pop = {k: e for k, e in pop.items() if "Q5" not in ids_of(e, "P31")}
+    log("popular: people", len(pe), "other", len(pl_pop))
+    extra_p = [k for k in people if k not in pe]
+    if extra_p:
+        log("fetching extra people:", len(extra_p)); pe.update(entities(extra_p))
+    extra_pl = [k for k in places if k not in pl_pop]
+    pl = dict(pl_pop)
+    if extra_pl:
+        log("fetching extra places:", len(extra_pl)); pl.update(entities(extra_pl))
 
     aux_ids = set()
     for e in pe.values():
