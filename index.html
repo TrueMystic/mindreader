@@ -107,20 +107,24 @@ h1{font-size:clamp(30px,8vw,40px)}
 
 <script>
 const T = {
-  ru:{intro:"Я — AI.\nЛюди предсказуемы.",intro2:"Докажу за 6 секунд.",start:"Проверь меня",again:"Ещё раз",
-      say:"Первое, что пришло в голову.\nВслух. Быстро!",think:"Анализирую…",picked:"Ты загадал:",
-      miss:"Хм. Нестандартно мыслишь.",miss2:"Или промолчал. Давай ещё раз — громче.",
+  ru:{intro:"Я — AI.\nЯ изучил 2,4 млн ответов людей.",intro2:"Люди предсказуемы. Сейчас докажу.",start:"Проверь меня",again:"Ещё раз",
+      say:"Назови первое, что пришло в голову.\nНе думай!",
+      think:["Сверяю с базой ответов…","Считаю вероятности…","Строю прогноз…"],picked:"Мой прогноз:",
+      miss:"Ты не успел.",miss2:"Первая мысль самая точная. Давай ещё раз, быстрее.",
       noApi:"Этот браузер не подходит",noApi2:"Открой ссылку в Safari на iPhone или в Chrome.",
-      denied:"Нужен микрофон",denied2:"Разреши доступ к микрофону в настройках браузера для этого сайта и нажми «Ещё раз».",
-      off:"Это не «{c}».\nХотел меня запутать? Но я всё равно знаю:",offTags:["Не выйдет.","Хитро. Но не хитрее меня.","Читер. Но предсказуемый."],
-      tags:["Слишком просто.","Как и 7 из 10 людей.","Предсказуемо.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Даже не напрягся."]},
-  en:{intro:"I'm an AI.\nHumans are predictable.",intro2:"I'll prove it in 6 seconds.",start:"Test me",again:"Again",
-      say:"First thing that comes to mind.\nOut loud. Fast!",think:"Analyzing…",picked:"You picked:",
-      miss:"Hmm. You're unusual.",miss2:"Or you stayed quiet. Again — louder.",
+      denied:"Нужен доступ к микрофону",denied2:"Разреши доступ в настройках браузера для этого сайта и нажми «Ещё раз».",
+      off:"Не из категории «{c}»?\nХитро. Но я и это предвидел:",
+      offTags:["Так пытаются запутать 1 из 9 людей.","Нестандартно. Но не для меня.","Предсказуемо непредсказуемый."],
+      tags:["Так отвечают {p}% людей.","Совпадение с прогнозом: {p}%.","Твой ответ в топе статистики.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Предсказуемо."]},
+  en:{intro:"I'm an AI.\nI've studied 2.4M human answers.",intro2:"Humans are predictable. Let me prove it.",start:"Test me",again:"Again",
+      say:"Name the first thing that comes to mind.\nDon't think!",
+      think:["Matching the answer database…","Calculating probabilities…","Building prediction…"],picked:"My prediction:",
+      miss:"Too slow.",miss2:"First thought is the most accurate. Try again, faster.",
       noApi:"This browser won't work",noApi2:"Open the link in Safari on iPhone or in Chrome.",
-      denied:"Microphone needed",denied2:"Allow microphone access for this site in browser settings, then tap Again.",
-      off:"That's not a {c}.\nTrying to trick me? I still know:",offTags:["Nice try.","Sneaky. Still predictable.","Cheater. Predictable cheater."],
-      tags:["Too easy.","Just like 7 out of 10 people.","Predictable.","I knew before I asked.","Humans are algorithms.","Didn't even try."]}
+      denied:"Microphone access needed",denied2:"Allow access for this site in browser settings, then tap Again.",
+      off:"Not a {c}?\nSneaky. I saw that coming too:",
+      offTags:["1 in 9 people try to trick me.","Unusual. Not for me.","Predictably unpredictable."],
+      tags:["{p}% of people answer this.","Prediction match: {p}%.","Your answer is a top statistic.","I knew before I asked.","Humans are algorithms.","Predictable."]}
 };
 
 // [ru, en, emoji, keys]  ключи: "кот" — слово целиком, "кошк*" — начало слова, "hot dog" — фраза
@@ -282,7 +286,7 @@ function show(p){
 }
 function applyLang(){
   document.documentElement.lang = lang;
-  document.querySelectorAll("[data-t]").forEach(el => el.textContent = T[lang][el.dataset.t]);
+  document.querySelectorAll("[data-t]").forEach(el => { const v = T[lang][el.dataset.t]; el.textContent = Array.isArray(v) ? v[0] : v; });
   $("lang-ru").classList.toggle("on", lang==="ru");
   $("lang-en").classList.toggle("on", lang==="en");
   show(phase);
@@ -358,8 +362,7 @@ function startRound(){
     if (h !== lastH) { lastH = h; lastChange = now; }
     const m = matchAny(h);
     if (m) { found = m; if (!matchedAt) matchedAt = now; }
-    const paused = h.trim() && now - lastChange > 1300;   // человек сказал и замолчал
-    if (el >= DURATION + 400 || (matchedAt && now - matchedAt > 900) || paused) return finish(id);
+    if (el >= DURATION + 300) return finish(id);   // таймер всегда доходит до конца
     requestAnimationFrame(tick);
   }
 }
@@ -419,6 +422,9 @@ async function finish(id){
   const text = heard();
   stopRec();
   show("think");
+  const thinkEl = document.querySelector('[data-t="think"]'); let ti = 0;
+  thinkEl.textContent = T[lang].think[0];
+  const cycle = setInterval(() => { thinkEl.textContent = T[lang].think[++ti % T[lang].think.length]; }, 700);
   const t0 = Date.now();
   const all = text + " " + curText;
   // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
@@ -434,8 +440,9 @@ async function finish(id){
     if (src) img = await loadImg(src);
     log("img: " + (img ? "ok" : "нет"));
   }
-  const wait = 1300 - (Date.now() - t0);
+  const wait = 2100 - (Date.now() - t0);
   if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  clearInterval(cycle);
   if (id !== runId) return;
   if (!found) return show("miss");
   const pic = $("r-pic"), em = $("r-emoji");
@@ -445,7 +452,7 @@ async function finish(id){
   box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop");
   $("r-name").textContent = lang === "ru" ? found[0] : found[1];
   $("r-label").textContent = other ? T[lang].off.replace("{c}", cat[lang]) : T[lang].picked;
-  const tags = other ? T[lang].offTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
+  const tags = other ? T[lang].offTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)].replace("{p}", 18 + Math.floor(Math.random()*47));
   show("result");
 }
 
