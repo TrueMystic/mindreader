@@ -45,6 +45,7 @@ h1{font-size:clamp(30px,8vw,40px)}
 .btn{width:100%;border:0;border-radius:18px;padding:18px;font:400 22px var(--display);color:#fff;cursor:pointer;
   background:linear-gradient(90deg,var(--accent),var(--accent2));margin-bottom:24px}
 .btn:focus-visible,.seg button:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+#dbg{font:12px ui-monospace,monospace;color:var(--muted);white-space:pre-wrap;max-height:30vh;overflow:auto;margin:0 0 16px}
 .spin{width:56px;height:56px;border-radius:50%;border:5px solid #ffffff2a;border-top-color:var(--accent);animation:s .8s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
 .pop{animation:p .45s cubic-bezier(.2,1.6,.4,1)}
@@ -70,7 +71,7 @@ h1{font-size:clamp(30px,8vw,40px)}
   <section class="screen" id="s-listen" hidden>
     <div class="title" id="cat"></div>
     <p class="sub" data-t="say"></p>
-    <div class="count" id="count">5</div>
+    <div class="count" id="count">6</div>
     <div class="bar"><i id="bar"></i></div>
   </section>
 
@@ -99,17 +100,18 @@ h1{font-size:clamp(30px,8vw,40px)}
   </section>
 
   <button class="btn" id="go" type="button"></button>
+  <pre id="dbg" hidden></pre>
 </div>
 
 <script>
 const T = {
-  ru:{intro:"Я — AI.\nЛюди предсказуемы.",intro2:"Докажу за 5 секунд.",start:"Проверь меня",again:"Ещё раз",
+  ru:{intro:"Я — AI.\nЛюди предсказуемы.",intro2:"Докажу за 6 секунд.",start:"Проверь меня",again:"Ещё раз",
       say:"Первое, что пришло в голову.\nВслух. Быстро!",think:"Анализирую…",picked:"Ты загадал:",
       miss:"Хм. Нестандартно мыслишь.",miss2:"Или промолчал. Давай ещё раз — громче.",
       noApi:"Этот браузер не подходит",noApi2:"Открой ссылку в Safari на iPhone или в Chrome.",
       denied:"Нужен микрофон",denied2:"Разреши доступ к микрофону в настройках браузера для этого сайта и нажми «Ещё раз».",
       tags:["Слишком просто.","Как и 7 из 10 людей.","Предсказуемо.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Даже не напрягся."]},
-  en:{intro:"I'm an AI.\nHumans are predictable.",intro2:"I'll prove it in 5 seconds.",start:"Test me",again:"Again",
+  en:{intro:"I'm an AI.\nHumans are predictable.",intro2:"I'll prove it in 6 seconds.",start:"Test me",again:"Again",
       say:"First thing that comes to mind.\nOut loud. Fast!",think:"Analyzing…",picked:"You picked:",
       miss:"Hmm. You're unusual.",miss2:"Or you stayed quiet. Again — louder.",
       noApi:"This browser won't work",noApi2:"Open the link in Safari on iPhone or in Chrome.",
@@ -222,12 +224,22 @@ const CATS = [
   ["Серый","Gray","🩶",["серый","серая","серое","серого","gray","grey"]]]}
 ];
 
-const DURATION = 5000;
+const DURATION = 6000;
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const DEBUG = location.hash === "#debug";
 const $ = id => document.getElementById(id);
 let lang = "ru";
 try { lang = localStorage.getItem("lang") || "ru"; } catch(e){}
-let phase = "intro", cat = null, found = null, rec = null, heard = "", runId = 0;
+let phase = "intro", cat = null, found = null, rec = null, runId = 0;
+let doneText = "", curText = "", lastErr = "";
+const heard = () => doneText + " " + curText;
+
+function log(msg){
+  if (!DEBUG) return;
+  const d = $("dbg"); d.hidden = false;
+  d.textContent = (new Date().toISOString().slice(17,23) + " " + msg + "\n" + d.textContent).slice(0, 1500);
+}
 
 const norm = s => s.toLowerCase().replace(/ё/g,"е");
 function match(category, text){
@@ -262,7 +274,44 @@ $("lang-ru").onclick = () => { lang="ru"; try{localStorage.setItem("lang",lang)}
 $("lang-en").onclick = () => { lang="en"; try{localStorage.setItem("lang",lang)}catch(e){} applyLang(); };
 
 function err(title, text){ $("err-title").textContent = title; $("err-text").textContent = text; show("err"); }
-function stopRec(){ if (rec) { try{ rec.onend = null; rec.abort(); }catch(e){} rec = null; } }
+function stopRec(){
+  if (!rec) return;
+  const r = rec; rec = null;
+  r.onend = r.onresult = r.onerror = null;
+  try { r.stop(); } catch(e){}
+  setTimeout(() => { try { r.abort(); } catch(e){} }, 300);
+}
+
+function makeRec(id, onLive){
+  const r = new SR();
+  r.lang = lang === "ru" ? "ru-RU" : "en-US";
+  r.continuous = !IOS;          // на iPhone непрерывный режим глючит — перезапускаем вручную
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+  r.onstart = () => { log("start"); onLive && onLive(); };
+  r.onaudiostart = () => { log("audio"); onLive && onLive(); };
+  r.onresult = e => {
+    let t = "";
+    for (let i = 0; i < e.results.length; i++) t += " " + e.results[i][0].transcript;
+    curText = t;
+    log("heard: " + t.trim());
+  };
+  r.onerror = e => {
+    lastErr = e.error; log("error: " + e.error);
+    if (id !== runId) return;
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      runId++; stopRec(); err(T[lang].denied, T[lang].denied2);
+    }
+  };
+  r.onend = () => {
+    log("end");
+    if (id !== runId || phase !== "listen" || rec !== r) return;
+    doneText += " " + curText; curText = "";
+    try { r.start(); }
+    catch(e) { try { rec = makeRec(id); rec.start(); } catch(e2){ log("restart fail"); } }
+  };
+  return r;
+}
 
 function startRound(){
   if (!SR) return err(T[lang].noApi, T[lang].noApi2);
@@ -270,46 +319,39 @@ function startRound(){
   stopRec();
   const others = CATS.filter(c => c !== cat);
   cat = others[Math.floor(Math.random()*others.length)];
-  found = null; heard = "";
+  found = null; doneText = ""; curText = ""; lastErr = "";
   $("cat").textContent = cat[lang];
-  $("count").textContent = "5"; $("bar").style.width = "0";
+  $("count").textContent = String(DURATION/1000); $("bar").style.width = "0";
 
-  rec = new SR();
-  rec.lang = lang === "ru" ? "ru-RU" : "en-US";
-  rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 3;
-  rec.onresult = e => {
-    let t = "";
-    for (let i = 0; i < e.results.length; i++)
-      for (let j = 0; j < e.results[i].length; j++) t += " " + e.results[i][j].transcript;
-    heard = t;
-  };
-  rec.onerror = e => {
-    if (id !== runId) return;
-    if (e.error === "not-allowed" || e.error === "service-not-allowed") { runId++; stopRec(); err(T[lang].denied, T[lang].denied2); }
-  };
-  rec.onend = () => { if (id === runId && phase === "listen") { try{ rec && rec.start(); }catch(e){} } };
-  try { rec.start(); } catch(e) { return err(T[lang].noApi, T[lang].noApi2); }
+  // Отсчёт начинается, только когда микрофон реально включился
+  let t0 = 0;
+  const go = () => { if (!t0 && id === runId) { t0 = performance.now(); requestAnimationFrame(tick); } };
+  rec = makeRec(id, go);
+  try { rec.start(); } catch(e) { log("start fail " + e); return err(T[lang].noApi, T[lang].noApi2); }
   show("listen");
+  setTimeout(go, 2500);
 
-  const t0 = performance.now(); let matchedAt = 0;
-  (function tick(now){
+  let matchedAt = 0;
+  function tick(now){
     if (id !== runId) return;
-    const el = now - t0, p = Math.min(el/DURATION, 1);
+    const el = Math.max(0, now - t0), p = Math.min(el/DURATION, 1);
     $("bar").style.width = (p*100) + "%";
     $("count").textContent = Math.max(0, Math.ceil((DURATION - el)/1000));
-    const m = match(cat, heard);
+    const m = match(cat, heard());
     if (m) { found = m; if (!matchedAt) matchedAt = now; }
-    if (el >= DURATION || (matchedAt && now - matchedAt > 900)) return finish(id);
+    if (el >= DURATION + 400 || (matchedAt && now - matchedAt > 900)) return finish(id);
     requestAnimationFrame(tick);
-  })(t0);
+  }
 }
 
 function finish(id){
+  const text = heard();
   stopRec();
   show("think");
   setTimeout(() => {
     if (id !== runId) return;
-    found = found || match(cat, heard);
+    found = found || match(cat, text + " " + curText);
+    log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
     if (found) {
       const em = $("r-emoji"); em.textContent = found[2];
       em.classList.remove("pop"); void em.offsetWidth; em.classList.add("pop");
