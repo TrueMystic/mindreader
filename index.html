@@ -699,6 +699,20 @@ const CATS = [
   ["Бронтозавр", "Brontosaurus", "🦕", ["бронтозавр*", "brontosaurus"]]]}
 ];
 
+// Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
+const BUILD = "1792037799";
+(async () => {
+  try {
+    const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
+    const m = html.match(/const BUILD = "1792037799"]+)"/);
+    if (m && m[1] !== BUILD) {
+      const u = new URL(location.href);
+      if (u.searchParams.get("u") === m[1]) return;     // уже пробовали — не зацикливаемся
+      u.searchParams.set("u", m[1]);
+      location.replace(u.toString());
+    }
+  } catch(e) {}
+})();
 const DURATION = 6000;
 // Секретный режим для друга: ссылка с ?sasha — один раз, в 3-м или 4-м раунде, категория «Кто ты?», ответ всегда «Саша-тракист»
 const PRANK = new URLSearchParams(location.search).has("sasha");
