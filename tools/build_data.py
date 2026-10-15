@@ -113,6 +113,14 @@ def claims(e, p):
         if v is not None: out.append(v)
     return out
 def ids_of(e, p): return [v["id"] for v in claims(e, p) if isinstance(v, dict) and "id" in v]
+def ids_ranked(e, p):
+    cs = [c for c in e.get("claims", {}).get(p, []) if c.get("rank") != "deprecated"]
+    cs.sort(key=lambda c: 0 if c.get("rank") == "preferred" else 1)
+    out = []
+    for c in cs:
+        v = c.get("mainsnak", {}).get("datavalue", {}).get("value")
+        if isinstance(v, dict) and "id" in v: out.append(v["id"])
+    return out
 def year_of(e, p):
     for v in claims(e, p):
         t = v.get("time", "") if isinstance(v, dict) else ""
@@ -172,6 +180,27 @@ PLACE = [
     ("lighthouse", ["lighthouse"]), ("airport", ["airport"]), ("station", ["railway station", "station"]),
     ("tomb", ["tomb", "mausoleum", "necropolis"]), ("hotel", ["hotel", "casino"]), ("government", ["parliament", "capitol", "legislature", "city hall", "government building"]),
 ]
+PLACE_TYPES = {
+  "tower": ["Q12518","Q11166728","Q1440300"], "skyscraper": ["Q11303"], "bridge": ["Q12280","Q537127","Q1825472","Q158218"],
+  "church": ["Q16970","Q2977","Q163687","Q44613","Q108325","Q56242215","Q1088552"], "mosque": ["Q32815"],
+  "temple": ["Q44539","Q842402","Q5393308","Q34627","Q845945"], "palace": ["Q16560","Q53536964"],
+  "castle": ["Q23413","Q57821","Q1785071","Q88291"], "stadium": ["Q483110","Q641226"], "museum": ["Q33506","Q207694","Q17431399"],
+  "statue": ["Q179700","Q4989906","Q5003624","Q575759","Q860861"], "pyramid": ["Q12516"], "theatre": ["Q24354","Q153562","Q1060829"],
+  "dam": ["Q12323"], "wall": ["Q42948","Q57346"], "square": ["Q174782"], "park": ["Q22698","Q46169","Q1107656"],
+  "ruins": ["Q839954","Q109607","Q15661340"], "lighthouse": ["Q39715"], "airport": ["Q1248784","Q644371"],
+  "station": ["Q55488","Q928830","Q18543139"], "tomb": ["Q381885","Q162875"], "hotel": ["Q27686","Q133215"],
+  "government": ["Q16831714","Q543654"],
+  "mountain": ["Q8502"], "volcano": ["Q8072","Q169358"], "waterfall": ["Q34038"], "lake": ["Q23397"], "canyon": ["Q150784"],
+  "island": ["Q23442"], "river": ["Q4022"], "desert": ["Q8514"], "glacier": ["Q35666"], "cave": ["Q35509"], "reef": ["Q184358"], "beach": ["Q40080"],
+}
+NATURE = {"mountain","volcano","waterfall","lake","canyon","island","river","desert","glacier","cave","reef","beach"}
+TYPE2G = {q: g for g, qs in PLACE_TYPES.items() for q in qs}
+def place_groups_q(type_ids):
+    g = {TYPE2G[t] for t in type_ids if t in TYPE2G}
+    if g & {"church", "mosque", "temple"}: g.add("religious")
+    if g & NATURE: g.add("nature")
+    return sorted(g)
+
 def place_groups(type_labels):
     g = set()
     for lb in type_labels:
@@ -191,14 +220,25 @@ def main():
     people_cis = candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?c {{ wd:Q159 wd:Q184 wd:Q232 wd:Q212 wd:Q15180 wd:Q34266 }}
         ?x wdt:P31 wd:Q5 . ?x wdt:P27 ?c . ?x wikibase:sitelinks ?sl . FILTER(?sl >= {cis}) }}""", "people(cis)")
     people.update(people_cis)
-    places = candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?root {{ wd:Q811979 wd:Q4989906 wd:Q570116 }}
-        ?x wdt:P31/wdt:P279* ?root . ?x wikibase:sitelinks ?sl . FILTER(?sl >= {plc}) }}""", "places")
+    places = {}
+    for g, qs in PLACE_TYPES.items():
+        vals = " ".join("wd:" + q for q in qs)
+        lim = 40 if g in NATURE else 25
+        places.update(candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?t {{ {vals} }} ?x wdt:P31 ?t . ?x wikibase:sitelinks ?sl . FILTER(?sl >= {lim}) }}""", "places:" + g))
+    log("places total:", len(places))
+    COUNTRY_BATCHES = [
+        "Q30 Q145 Q174193 Q179876 Q16", "Q142 Q70972 Q71084 Q183 Q43287 Q7318 Q27306 Q41304", "Q38 Q172579 Q29 Q80702 Q55 Q31 Q39 Q40 Q28513",
+        "Q36 Q213 Q218 Q28 Q34 Q20 Q35 Q33 Q27 Q45 Q41", "Q1747689 Q17167 Q2277 Q11772 Q12548 Q12560 Q43", "Q148 Q8733 Q17 Q188712 Q668 Q884 Q794 Q79 Q801",
+        "Q96 Q155 Q414 Q298 Q739 Q408 Q664 Q258 Q1033 Q115", "Q15180 Q159 Q34266 Q212 Q184 Q232 Q265 Q230 Q399 Q227"]
+    for batch in COUNTRY_BATCHES:
+        vals = " ".join("wd:" + q for q in batch.split())
+        people.update(candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?c {{ {vals} }} ?x wdt:P27 ?c . ?x wdt:P31 wd:Q5 . ?x wikibase:sitelinks ?sl . FILTER(?sl >= 70) }}""", "people:" + batch[:20]))
     # не здания (страны, города и т.п.) отсекаем позже по наличию типа
 
     # Главный источник — популярные статьи Википедии (кого реально ищут люди)
     pop = entities_by_titles(top_titles())
     pe = {k: e for k, e in pop.items() if "Q5" in ids_of(e, "P31")}
-    pl_pop = {k: e for k, e in pop.items() if "Q5" not in ids_of(e, "P31")}
+    pl_pop = {k: e for k, e in pop.items() if "Q5" not in ids_of(e, "P31") and place_groups_q(ids_of(e, "P31"))}
     log("popular: people", len(pe), "other", len(pl_pop))
     extra_p = [k for k in people if k not in pe]
     if extra_p:
@@ -232,14 +272,16 @@ def main():
         if not (ru or en): continue
         g = ids_of(e, "P21")
         gender = "m" if "Q6581097" in g or "Q2449503" in g else ("f" if "Q6581072" in g or "Q1052281" in g else None)
-        occ = occ_groups([lab(aux.get(o, {}), "en") for o in ids_of(e, "P106")])
+        occ_ids = ids_ranked(e, "P106")
+        occ = occ_groups([lab(aux.get(o, {}), "en") for o in occ_ids[:2]])
+        occ2 = [x for x in occ_groups([lab(aux.get(o, {}), "en") for o in occ_ids[2:]]) if x not in occ]
         cs = [c for c in (country(c) for c in ids_of(e, "P27")) if c]
         img = claims(e, "P18")
         out_people.append({
-            "id": k, "n": ru or en, "e": en or ru, "d": desc(e, "ru") or desc(e, "en"),
+            "id": k, "n": ru or en, "e": en or ru, "d": (desc(e, "ru") or desc(e, "en"))[:90],
             "i": img[0] if img else None, "s": len(e.get("sitelinks", {})) or people.get(k, 0),
             "g": gender, "b": year_of(e, "P569"), "dd": year_of(e, "P570"),
-            "c": cs[:3], "o": occ,
+            "c": cs[:3], "o": occ, "o2": occ2,
         })
 
     out_places = []
@@ -247,13 +289,13 @@ def main():
         if "missing" in e: continue
         ru, en = lab(e, "ru"), lab(e, "en")
         if not (ru or en): continue
-        types = place_groups([lab(aux.get(t, {}), "en") for t in ids_of(e, "P31")])
+        types = place_groups_q(ids_of(e, "P31"))
         if not types: continue
         cs = [c for c in (country(c) for c in ids_of(e, "P17")) if c]
         img = claims(e, "P18")
-        h = amount(e, "P2048")
+        h = amount(e, "P2048") or amount(e, "P2044")
         out_places.append({
-            "id": k, "n": ru or en, "e": en or ru, "d": desc(e, "ru") or desc(e, "en"),
+            "id": k, "n": ru or en, "e": en or ru, "d": (desc(e, "ru") or desc(e, "en"))[:90],
             "i": img[0] if img else None, "s": len(e.get("sitelinks", {})) or places.get(k, 0),
             "c": cs[:1], "t": types, "y": year_of(e, "P571"), "h": round(h) if h else None,
         })
