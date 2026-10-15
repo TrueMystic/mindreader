@@ -805,7 +805,7 @@ const CATS = [
 ];
 
 // Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
-const BUILD = "1792038856";
+const BUILD = "1792041904";
 (async () => {
   try {
     const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
@@ -1348,7 +1348,7 @@ function g2Guess(i){
   if (i < 0 || !G2.w[i]) return g2End(false);
   G2.guesses++; G2.cur = i;
   const it = G2.items[i];
-  $("g2-name").textContent = lang === "ru" ? it.n : it.e;
+  $("g2-name").textContent = lang === "ru" ? it.n : (it.e || it.n);
   $("g2-desc").textContent = it.d || "";
   const src = g2Img(it), pic = $("g2-pic"), em = $("g2-emoji");
   pic.hidden = !src; em.hidden = !!src;
