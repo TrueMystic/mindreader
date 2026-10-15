@@ -700,11 +700,11 @@ const CATS = [
 ];
 
 // Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
-const BUILD = "1792037799";
+const BUILD = "1792038014";
 (async () => {
   try {
     const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
-    const m = html.match(/const BUILD = "1792037799"]+)"/);
+    const m = html.match(new RegExp("const " + "BUILD = \"([^\"]+)\""));
     if (m && m[1] !== BUILD) {
       const u = new URL(location.href);
       if (u.searchParams.get("u") === m[1]) return;     // уже пробовали — не зацикливаемся
