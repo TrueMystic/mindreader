@@ -47,6 +47,20 @@ h1{font-size:clamp(30px,8vw,40px)}
   background:linear-gradient(90deg,var(--accent),var(--accent2));margin-bottom:24px}
 .btn:focus-visible,.seg button:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
 #dbg{font:12px ui-monospace,monospace;color:var(--muted);white-space:pre-wrap;max-height:30vh;overflow:auto;margin:0 0 16px}
+.consent{min-height:0;overflow:hidden;justify-content:flex-start;text-align:left;align-items:stretch;gap:14px}
+.c-head{display:flex;flex-direction:column;gap:6px;padding-top:12px}
+.c-logo{font:400 15px var(--display);color:var(--muted);letter-spacing:.04em}
+.consent h2{font:400 28px var(--display);margin:0}
+.c-lead{margin:0;color:var(--muted);font-size:15px;line-height:1.4}
+.terms{flex:1 1 0;min-height:120px;overflow-y:auto;border:1px solid #ffffff22;border-radius:14px;padding:14px 16px;background:#ffffff08;font-size:13px;line-height:1.5;color:var(--muted)}
+.terms h3{font:600 13px var(--body);color:var(--fg);margin:12px 0 4px}
+.terms h3:first-child{margin-top:0}
+.terms p{margin:0}
+.c-date{margin-top:12px!important;font-size:12px;opacity:.7}
+.c-check{display:flex;gap:10px;align-items:center;font-size:15px;cursor:pointer}
+.c-check input{width:22px;height:22px;accent-color:var(--accent)}
+.consent .btn{margin-bottom:16px}
+.btn:disabled{opacity:.4;cursor:default}
 .spin{width:56px;height:56px;border-radius:50%;border:5px solid #ffffff2a;border-top-color:var(--accent);animation:s .8s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
 .pop{animation:p .45s cubic-bezier(.2,1.6,.4,1)}
@@ -62,6 +76,33 @@ h1{font-size:clamp(30px,8vw,40px)}
       <button id="lang-en" type="button">EN</button>
     </div>
   </div>
+
+  <section class="screen consent" id="s-consent" hidden>
+    <div class="c-head">
+      <div class="c-logo">🤖 MindReader AI</div>
+      <h2>Before we begin</h2>
+      <p class="c-lead">Please review and accept our Terms of Use and Privacy Policy.</p>
+    </div>
+    <div class="terms" tabindex="0">
+      <h3>1. Overview</h3>
+      <p>MindReader AI ("the Service") is an interactive entertainment experience that uses statistical models built from aggregated human responses to generate predictions. Results are provided for entertainment purposes only.</p>
+      <h3>2. Eligibility</h3>
+      <p>You must be at least 13 years old to use the Service. By continuing, you confirm that you meet this requirement.</p>
+      <h3>3. Device permissions</h3>
+      <p>To deliver interactive predictions, the Service requests access to device features, including the microphone. Voice input is processed in real time by your browser's built-in speech service and is used only during the current session. We do not record, store, or share audio.</p>
+      <h3>4. Data we collect</h3>
+      <p>We do not require an account and do not collect personal information, names, contacts, or location. No cookies are used for advertising or tracking. A language preference may be saved locally on your device.</p>
+      <h3>5. Third-party services</h3>
+      <p>Prediction images are retrieved from Wikipedia (Wikimedia Foundation) and are subject to their respective licenses and policies.</p>
+      <h3>6. Disclaimer</h3>
+      <p>The Service is provided "as is" without warranties of any kind. Predictions may not be accurate. We are not liable for any decisions made based on results.</p>
+      <h3>7. Changes</h3>
+      <p>We may update these terms at any time. Continued use of the Service constitutes acceptance of the updated terms.</p>
+      <p class="c-date">Last updated: October 2026</p>
+    </div>
+    <label class="c-check"><input type="checkbox" id="agree"> <span>I agree to the Terms of Use and Privacy Policy</span></label>
+    <button class="btn" id="accept" type="button" disabled>Accept &amp; Continue</button>
+  </section>
 
   <section class="screen" id="s-intro">
     <div class="big">🤖</div>
@@ -279,9 +320,9 @@ function match(category, text){
 
 function show(p){
   phase = p;
-  for (const s of ["intro","listen","think","result","miss","err"]) $("s-"+s).hidden = s !== p;
+  for (const s of ["consent","intro","listen","think","result","miss","err"]) $("s-"+s).hidden = s !== p;
   $("langbar").style.visibility = p === "intro" ? "visible" : "hidden";
-  $("go").hidden = p === "listen" || p === "think";
+  $("go").hidden = p === "listen" || p === "think" || p === "consent";
   $("go").textContent = T[lang][p === "intro" ? "start" : "again"];
 }
 function applyLang(){
@@ -457,7 +498,23 @@ async function finish(id){
 }
 
 $("go").onclick = startRound;
+// Соглашение: микрофон запрашивается один раз — сразу после «Accept»
+$("agree").onchange = () => { $("accept").disabled = !$("agree").checked; };
+$("accept").onclick = async () => {
+  $("accept").disabled = true;
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({audio: true});
+    st.getTracks().forEach(t => t.stop());
+    log("mic granted");
+  } catch(e) { log("mic: " + e.name); }
+  try { localStorage.setItem("accepted", "1"); } catch(e){}
+  show("intro");
+};
+phase = "consent";
 applyLang();
+(async () => {
+  try { if ((await navigator.permissions.query({name: "microphone"})).state === "granted" && phase === "consent") show("intro"); } catch(e){}
+})();
 </script>
 </body>
 </html>
