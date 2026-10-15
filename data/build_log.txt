@@ -1,0 +1,10 @@
+  sparql via qlever rows: 0
+people(world) candidates: 0
+  sparql via qlever rows: 0
+people(cis) candidates: 0
+  sparql via qlever rows: 0
+places candidates: 0
+fetching people entities: 0
+fetching place entities: 0
+fetching aux labels: 0
+DONE people: 0 places: 0 countries: 0
