@@ -1,10 +1,28 @@
   sparql via qlever rows: 0
+  retry 1 IncompleteRead IncompleteRead(0 bytes read)
+  retry 2 IncompleteRead IncompleteRead(0 bytes read)
+  sparql wdqs failed: failed: https://query.wikidata.org/sparql?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFIX+wikibase%3A
 people(world) candidates: 0
   sparql via qlever rows: 0
-people(cis) candidates: 0
+  sparql via wdqs rows: 4378
+people(cis) candidates: 3190
   sparql via qlever rows: 0
+  retry 1 HTTPError HTTP Error 504: Gateway Timeout
+  retry 2 HTTPError HTTP Error 504: Gateway Timeout
+  sparql wdqs failed: failed: https://query.wikidata.org/sparql?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFIX+wikibase%3A
 places candidates: 0
-fetching people entities: 0
-fetching place entities: 0
-fetching aux labels: 0
-DONE people: 0 places: 0 countries: 0
+top titles: 8893
+  resolved ru → entities total 3606
+  resolved en → entities total 7372
+popular: people 4121 other 3251
+fetching extra people: 2745
+  entities 0 / 2745
+  entities 1000 / 2745
+  entities 2000 / 2745
+fetching aux labels: 3627
+  entities 0 / 3627
+  entities 1000 / 3627
+  entities 2000 / 3627
+  entities 3000 / 3627
+  entities 0 / 9
+DONE people: 6852 places: 53 countries: 322
