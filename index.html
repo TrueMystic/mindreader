@@ -402,6 +402,23 @@ const CATS = [
   ["Шампанское", "Champagne", "🍾", ["шампанск*", "champagne"]],
   ["Кефир", "Kefir", "🥛", ["кефир*", "kefir"]],
   ["Виски", "Whisky", "🥃", ["виски", "whisk*"]],
+  ["Белый русский","White Russian","🥃",["белый русский","white russian"]],
+  ["Кровавая Мэри","Bloody Mary","🍅",["кровавая мэри","кровавую мэри","bloody mary"]],
+  ["Пина колада","Piña colada","🍹",["пина колад*","pina colada"]],
+  ["Маргарита","Margarita","🍸",["маргарит*","margarita*"]],
+  ["Мартини","Martini","🍸",["мартини","martini*"],"Martini (cocktail)"],
+  ["Апероль","Aperol Spritz","🍹",["апероль*","шприц","aperol*","spritz"],"Spritz (aperitif)"],
+  ["Лонг Айленд","Long Island Iced Tea","🍹",["лонг айленд*","long island"],"Long Island iced tea"],
+  ["Космополитен","Cosmopolitan","🍸",["космополитен*","cosmopolitan"],"Cosmopolitan (cocktail)"],
+  ["Текила","Tequila","🥃",["текил*","tequila"]],
+  ["Ром","Rum","🥃",["ром","рома","rum"]],
+  ["Джин","Gin","🍸",["джин","джина","джин-тоник","gin"]],
+  ["Коньяк","Cognac","🥃",["коньяк*","бренди","cognac","brandy"]],
+  ["Сидр","Cider","🍏",["сидр*","cider"]],
+  ["Глинтвейн","Mulled wine","🍷",["глинтвейн*","mulled wine"]],
+  ["Компот","Kompot","🍒",["компот*","kompot"]],
+  ["Айран","Ayran","🥛",["айран*","ayran"]],
+  ["Кумыс","Kumis","🥛",["кумыс*","kumis"]],
   ["Энергетик", "Energy drink", "⚡", ["энергетик*", "ред булл", "energy drink*", "red bull", "monster"]]]},
  {ru:"Десерт",en:"Dessert",items:[
   ["Торт", "Cake", "🎂", ["торт*", "cake"]],
@@ -700,7 +717,7 @@ const CATS = [
 ];
 
 // Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
-const BUILD = "1792038014";
+const BUILD = "1792038435";
 (async () => {
   try {
     const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
@@ -888,6 +905,15 @@ function isGeneric(w){
   if (cat.ru === "Марка машины" && n.startsWith("машин")) return true;   // «назову машину» — не марка
   return false;
 }
+// Фразы из 2–3 слов подряд («белый русский», «кровавая мэри») — проверяем целиком раньше отдельных слов
+function phraseCandidates(text){
+  const w = text.trim().split(/\s+/).filter(x => x && !isGeneric(x)).map(x => x.replace(/[.,!?…]+$/,""));
+  const u = w.filter((x, i) => i === 0 || norm(x) !== norm(w[i-1]));
+  const out = [];
+  if (u.length >= 3) out.push(u.slice(0,3).join(" "));
+  if (u.length >= 2) out.push(u.slice(0,2).join(" "));
+  return out.map(p => p.charAt(0).toUpperCase() + p.slice(1));
+}
 function rawGuess(text){
   const words = text.trim().split(/\s+/).filter(w => w && !isGeneric(w));
   const uniq = words.filter((w, i) => i === 0 || norm(w) !== norm(words[i-1]));
@@ -947,7 +973,7 @@ async function wikiQuery(params, signal){
     .sort((x,y) => (x.index||0) - (y.index||0));
 }
 // → {img, ok}: ok = слово подходит к текущей категории
-async function resolveWord(word, needCheck){
+async function resolveWord(word, needCheck, strict){
   const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4500);
   const stem = norm(word).replace(/[^\p{L}\p{N}]/gu,"").slice(0, 4);
   const related = p => norm(p.title).replace(/[^\p{L}\p{N}]/gu,"").includes(stem);
@@ -961,9 +987,9 @@ async function resolveWord(word, needCheck){
       const h = hits.find(p => fits(p) && p.thumbnail) || hits.find(fits);
       if (h) { log("wiki+: " + h.title + " | " + (h.description || "")); best = h; }
     }
-  } catch(e) { log("wiki err: " + e.name); if (!best) { clearTimeout(to); return {img: null, ok: true, en: null}; } }
+  } catch(e) { log("wiki err: " + e.name); if (!best) { clearTimeout(to); return {img: null, ok: !strict, en: null}; } }
   finally { clearTimeout(to); }
-  if (!best) return {img: null, ok: !needCheck, en: lang === "en" ? word : null};
+  if (!best) return {img: null, ok: !needCheck && !strict, en: lang === "en" ? word : null};
   const en = lang === "en" ? best.title : (best.langlinks && best.langlinks[0] && best.langlinks[0]["*"]) || null;
   return {img: best.thumbnail ? best.thumbnail.source : null, ok: !needCheck || fits(best), en};
 }
@@ -1062,8 +1088,15 @@ async function finish(id){
   found = inCat || (other ? null : rawGuess(curText.trim() ? curText : all));
   let fallback = !!other || !found;   // молчание тоже → «статистический» прогноз
   log("final: " + (text.trim() || "(пусто)") + " | категория: " + cat.ru + (lastErr ? " | err " + lastErr : ""));
-  let img = null;
-  if (found) {
+  let img = null, phraseOk = false;
+  if (!inCat) {
+    for (const ph of phraseCandidates(curText.trim() ? curText : text)) {
+      const r = await resolveWord(ph, true, true);
+      log("фраза: " + ph + " → " + (r.ok ? "подходит" : "нет"));
+      if (r.ok) { found = [ph, r.en || ph, rawGuess(ph)?.[2] || "🎯", []]; fallback = false; phraseOk = true; img = await bestImage(r, null); break; }
+    }
+  }
+  if (found && !phraseOk) {
     const r = await resolveWord(lang === "ru" ? found[0] : found[1], !inCat);
     if (!r.ok) fallback = true; else img = await bestImage(r, inCat ? (found[4] || found[1]) : null);
   }
