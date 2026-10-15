@@ -274,8 +274,8 @@ const CATS = [
   ["Одуванчик","Dandelion","🌼",["одуванчик*","dandelion*"]],
   ["Хризантема","Chrysanthemum","🏵️",["хризантем*","chrysanthemum*"]]]},
  {ru:"Любимый цвет",en:"Favorite color",items:[
-  ["Красный","Red","🔴",["красн*","red"]],
-  ["Синий","Blue","🔵",["синий","синяя","синее","синего","синюю","blue"]],
+  ["Красный","Red","🔴",["красн*","краской","red"]],
+  ["Синий","Blue","🔵",["синий","синяя","синее","синего","синюю","сини","синей","сири","siri","blue"]],
   ["Зелёный","Green","🟢",["зелен*","green"]],
   ["Жёлтый","Yellow","🟡",["желт*","yellow"]],
   ["Чёрный","Black","⚫️",["черн*","black"]],
@@ -285,7 +285,7 @@ const CATS = [
   ["Розовый","Pink","🩷",["розов*","pink"]],
   ["Коричневый","Brown","🟤",["коричнев*","brown"]],
   ["Голубой","Light blue","🩵",["голуб*","light blue","cyan","turquoise"]],
-  ["Серый","Gray","🩶",["серый","серая","серое","серого","gray","grey"]]]}
+  ["Серый","Gray","🩶",["серый","серая","серое","серого","серой","gray","grey"]]]}
 ];
 
 const DURATION = 6000;
@@ -296,7 +296,7 @@ const $ = id => document.getElementById(id);
 let lang = "ru";
 try { lang = localStorage.getItem("lang") || "ru"; } catch(e){}
 let phase = "intro", cat = null, found = null, rec = null, runId = 0;
-let doneText = "", curText = "", lastErr = "";
+let doneText = "", curText = "", lastErr = "", altText = "";
 const heard = () => doneText + " " + curText;
 
 function log(msg){
@@ -351,12 +351,15 @@ function makeRec(id, onLive){
   r.lang = lang === "ru" ? "ru-RU" : "en-US";
   r.continuous = !IOS;          // на iPhone непрерывный режим глючит — перезапускаем вручную
   r.interimResults = true;
-  r.maxAlternatives = 1;
+  r.maxAlternatives = 5;
   r.onstart = () => { log("start"); onLive && onLive(); };
   r.onaudiostart = () => { log("audio"); onLive && onLive(); };
   r.onresult = e => {
     let t = "";
-    for (let i = 0; i < e.results.length; i++) t += " " + e.results[i][0].transcript;
+    for (let i = 0; i < e.results.length; i++) {
+      t += " " + e.results[i][0].transcript;
+      for (let j = 1; j < e.results[i].length; j++) altText += " " + e.results[i][j].transcript;  // запасные варианты
+    }
     curText = t;
     log("heard: " + t.trim());
   };
@@ -383,7 +386,7 @@ function startRound(){
   stopRec();
   const others = CATS.filter(c => c !== cat);
   cat = others[Math.floor(Math.random()*others.length)];
-  found = null; doneText = ""; curText = ""; lastErr = "";
+  found = null; doneText = ""; curText = ""; altText = ""; lastErr = "";
   $("cat").textContent = cat[lang];
   $("count").textContent = String(DURATION/1000); $("bar").style.width = "0";
 
@@ -403,7 +406,7 @@ function startRound(){
     $("count").textContent = Math.max(0, Math.ceil((DURATION - el)/1000));
     const h = heard();
     if (h !== lastH) { lastH = h; lastChange = now; }
-    const m = matchAny(h);
+    const m = matchAny(h + " " + altText);
     if (m) { found = m; if (!matchedAt) matchedAt = now; }
     if (el >= DURATION + 300) return finish(id);   // таймер всегда доходит до конца
     requestAnimationFrame(tick);
@@ -521,7 +524,7 @@ async function finish(id){
   thinkEl.textContent = T[lang].think[0];
   const cycle = setInterval(() => { thinkEl.textContent = T[lang].think[++ti % T[lang].think.length]; }, 700);
   const t0 = Date.now();
-  const all = text + " " + curText;
+  const all = text + " " + curText + " " + altText;
   // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
   // незнакомое слово → берём сказанное слово и ищем его картинку
   const inCat = match(cat, all);
