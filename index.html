@@ -209,6 +209,19 @@ const CATS = [
   ["Беларусь","Belarus","🇧🇾",["беларус*","белорус*","belarus*"]],
   ["Украина","Ukraine","🇺🇦",["украин*","ukrain*"]],
   ["Англия","UK","🇬🇧",["англи*","британи*","england","britain","uk"]]]},
+ {ru:"Цветок",en:"Flower",items:[
+  ["Роза","Rose","🌹",["роз*","rose*"]],
+  ["Тюльпан","Tulip","🌷",["тюльпан*","tulip*"]],
+  ["Ромашка","Daisy","🌼",["ромашк*","daisy","daisies","chamomile"]],
+  ["Подсолнух","Sunflower","🌻",["подсолнух*","подсолнечник*","sunflower*"]],
+  ["Лилия","Lily","🪷",["лили*","lily","lilies"]],
+  ["Орхидея","Orchid","🌸",["орхиде*","orchid*"]],
+  ["Пион","Peony","🌺",["пион*","peony","peonies"]],
+  ["Сакура","Cherry blossom","🌸",["сакур*","cherry blossom*"]],
+  ["Гибискус","Hibiscus","🌺",["гибискус*","hibiscus"]],
+  ["Лаванда","Lavender","🪻",["лаванд*","lavender"]],
+  ["Одуванчик","Dandelion","🌼",["одуванчик*","dandelion*"]],
+  ["Хризантема","Chrysanthemum","🏵️",["хризантем*","chrysanthemum*"]]]},
  {ru:"Цвет",en:"Color",items:[
   ["Красный","Red","🔴",["красн*","red"]],
   ["Синий","Blue","🔵",["синий","синяя","синее","синего","синюю","blue"]],
@@ -331,17 +344,39 @@ function startRound(){
   show("listen");
   setTimeout(go, 2500);
 
-  let matchedAt = 0;
+  let matchedAt = 0, lastH = "", lastChange = 0;
   function tick(now){
     if (id !== runId) return;
     const el = Math.max(0, now - t0), p = Math.min(el/DURATION, 1);
     $("bar").style.width = (p*100) + "%";
     $("count").textContent = Math.max(0, Math.ceil((DURATION - el)/1000));
-    const m = match(cat, heard());
+    const h = heard();
+    if (h !== lastH) { lastH = h; lastChange = now; }
+    const m = matchAny(h);
     if (m) { found = m; if (!matchedAt) matchedAt = now; }
-    if (el >= DURATION + 400 || (matchedAt && now - matchedAt > 900)) return finish(id);
+    const paused = h.trim() && now - lastChange > 1300;   // человек сказал и замолчал
+    if (el >= DURATION + 400 || (matchedAt && now - matchedAt > 900) || paused) return finish(id);
     requestAnimationFrame(tick);
   }
+}
+
+// Сначала ищем в текущей категории, потом во всех остальных
+function matchAny(text){
+  const m = match(cat, text); if (m) return m;
+  for (const c of CATS) { const x = match(c, text); if (x) return x; }
+  return null;
+}
+// Слова нет в списке — показываем само сказанное слово
+const FILLER = new Set(["ну","эм","ээ","э","мм","хм","это","так","наверное","может","пусть","будет","я","загадал","загадала","думаю","наверно","давай","скажем","ой","а","и",
+  "um","uh","er","hmm","well","i","think","guess","maybe","let","say","is","it","the","a","an","my","choose","pick","picked","so","like"]);
+function rawGuess(text){
+  const words = text.trim().split(/\s+/).filter(w => w && !FILLER.has(norm(w).replace(/[^\p{L}\p{N}-]/gu,"")));
+  if (!words.length) return null;
+  const pick = words.slice(-2).join(" ").replace(/[.,!?…]+$/,"");
+  if (!pick) return null;
+  const name = pick.charAt(0).toUpperCase() + pick.slice(1);
+  const emoji = {"Уличная еда":"🍽️","Марка машины":"🚗","Животное":"🐾","Фрукт":"🧺","Страна":"🌍","Цветок":"💐","Цвет":"🎨"}[cat.ru] || "🎯";
+  return [name, name, emoji, []];
 }
 
 function finish(id){
@@ -350,7 +385,8 @@ function finish(id){
   show("think");
   setTimeout(() => {
     if (id !== runId) return;
-    found = found || match(cat, text + " " + curText);
+    const all = text + " " + curText;
+    found = found || matchAny(all) || rawGuess(curText.trim() ? curText : all);
     log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
     if (found) {
       const em = $("r-emoji"); em.textContent = found[2];
