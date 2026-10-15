@@ -1260,7 +1260,11 @@ const PLACE_Q = {
   pyramid:["Это пирамида?","Is it a pyramid?"], theatre:["Это театр или концертный зал?","Is it a theatre or concert hall?"], dam:["Это плотина?","Is it a dam?"],
   wall:["Это стена?","Is it a wall?"], square:["Это площадь?","Is it a square?"], park:["Это парк или сад?","Is it a park or garden?"], ruins:["Это древние руины?","Is it ancient ruins?"],
   lighthouse:["Это маяк?","Is it a lighthouse?"], airport:["Это аэропорт?","Is it an airport?"], station:["Это вокзал или станция?","Is it a station?"],
-  tomb:["Это гробница или мавзолей?","Is it a tomb or mausoleum?"], hotel:["Это отель или казино?","Is it a hotel or casino?"], government:["Здесь заседает власть — парламент, правительство?","Is it a seat of government?"]
+  tomb:["Это гробница или мавзолей?","Is it a tomb or mausoleum?"], hotel:["Это отель или казино?","Is it a hotel or casino?"], government:["Здесь заседает власть — парламент, правительство?","Is it a seat of government?"],
+  nature:["Это природный объект (не построен человеком)?","Is it a natural landmark (not built by people)?"],
+  mountain:["Это гора?","Is it a mountain?"], volcano:["Это вулкан?","Is it a volcano?"], waterfall:["Это водопад?","Is it a waterfall?"],
+  lake:["Это озеро?","Is it a lake?"], canyon:["Это каньон?","Is it a canyon?"], island:["Это остров?","Is it an island?"], river:["Это река?","Is it a river?"],
+  desert:["Это пустыня?","Is it a desert?"], glacier:["Это ледник?","Is it a glacier?"], cave:["Это пещера?","Is it a cave?"], reef:["Это риф?","Is it a reef?"], beach:["Это пляж?","Is it a beach?"]
 };
 
 function g2Questions(){
@@ -1271,18 +1275,19 @@ function g2Questions(){
   const cnt = {}, conts = {};
   items.forEach((it, i) => { if (!G2.w[i]) return; (it.c || []).forEach(c => cnt[c] = (cnt[c] || 0) + G2.w[i]); const k = contOf(it); if (k) conts[k] = 1; });
   const topC = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
-  Object.keys(conts).forEach(k => { if (CONT_RU[k]) qs.push({id: "ct:" + k, t: L ? `Is it from ${CONT_EN[k]}?` : (G2.kind === "people" ? `Этот человек из ${CONT_RU[k]}?` : `Это находится в ${CONT_RU[k].replace(/ы$/,"е").replace(/и$/,"и")}?`), f: it => { const x = contOf(it); return x == null ? null : x === k; }}); });
+  Object.keys(conts).forEach(k => { if (CONT_RU[k]) qs.push({id: "ct:" + k, t: L ? `Is it from ${CONT_EN[k]}?` : (G2.kind === "people" ? `Этот человек из ${CONT_RU[k]}?` : `Это находится в ${({Q46:"Европе",Q48:"Азии",Q49:"Северной Америке",Q18:"Южной Америке",Q15:"Африке",Q538:"Океании",Q55643:"Океании",Q3960:"Австралии",Q51:"Антарктиде"})[k]}?`), f: it => { const x = contOf(it); return x == null ? null : x === k; }}); });
   topC.forEach(c => qs.push({id: "c:" + c, t: L ? `Is it connected to ${countryName(c)}?` : (G2.kind === "people" ? `Страна этого человека — ${countryName(c)}?` : `Это в стране ${countryName(c)}?`), f: it => it.c && it.c.length ? it.c.includes(c) : null}));
   if (G2.kind === "people") {
     qs.push({id: "male", t: L ? "Is it a man?" : "Это мужчина?", f: it => it.g ? it.g === "m" : null});
     qs.push({id: "alive", t: L ? "Is this person alive?" : "Этот человек жив?", f: it => it.dd ? false : (it.b ? it.b > 1915 : null)});
     [1800, 1900, 1940, 1960, 1975, 1985, 1995].forEach(y => qs.push({id: "b" + y, t: L ? `Born after ${y}?` : `Родился(-ась) после ${y} года?`, f: it => it.b == null ? null : it.b > y}));
     qs.push({id: "world", t: L ? "Is this person known all over the world?" : "Этого человека знают во всём мире?", f: it => it.s >= 110});
-    Object.keys(OCC_Q).forEach(o => qs.push({id: "o:" + o, t: OCC_Q[o][L], f: it => it.o.includes(o)}));
+    Object.keys(OCC_Q).forEach(o => qs.push({id: "o:" + o, t: OCC_Q[o][L], f: it => it.o.includes(o) ? true : (it.o2 && it.o2.includes(o) ? null : false)}));
   } else {
     Object.keys(PLACE_Q).forEach(t => qs.push({id: "t:" + t, t: PLACE_Q[t][L], f: it => it.t.includes(t)}));
-    [0, 1000, 1500, 1800, 1900, 1950, 1990].forEach(y => qs.push({id: "y" + y, t: L ? `Built after ${y}?` : (y === 0 ? "Это построено в нашей эре (после 0 года)?" : `Это построено после ${y} года?`), f: it => it.y == null ? null : it.y > y}));
-    [50, 100, 200, 300].forEach(h => qs.push({id: "h" + h, t: L ? `Is it taller than ${h} m?` : `Высота больше ${h} метров?`, f: it => it.h == null ? null : it.h > h}));
+    [0, 1000, 1500, 1800, 1900, 1950, 1990].forEach(y => qs.push({id: "y" + y, t: L ? `Built after ${y}?` : (y === 0 ? "Это построено в нашей эре (после 0 года)?" : `Это построено после ${y} года?`), f: it => it.y == null || it.t.includes("nature") ? null : it.y > y}));
+    [50, 100, 200, 300].forEach(h => qs.push({id: "h" + h, t: L ? `Is it taller than ${h} m?` : `Высота больше ${h} метров?`, f: it => it.h == null || it.t.includes("nature") ? null : it.h > h}));
+    [2000, 4000, 7000].forEach(h => qs.push({id: "m" + h, t: L ? `Is it higher than ${h} m above sea level?` : `Это выше ${h} метров над уровнем моря?`, f: it => it.h == null || !it.t.includes("nature") ? null : it.h > h}));
     qs.push({id: "world", t: L ? "Is it known all over the world?" : "Это место знают во всём мире?", f: it => it.s >= 90});
   }
   return qs;
@@ -1313,7 +1318,7 @@ function g2Answer(a){
   for (let i = 0; i < G2.items.length; i++) {
     if (!G2.w[i]) continue;
     const v = q.f(G2.items[i]);
-    const L = v == null ? 0.5 : 0.04 + 0.92 * (v ? a : 1 - a);
+    const L = v == null ? 0.5 : 0.08 + 0.84 * (v ? a : 1 - a);   // мягко: в базе тоже бывают ошибки
     G2.w[i] *= L;
   }
   g2Next();
