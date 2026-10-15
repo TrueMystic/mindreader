@@ -156,6 +156,7 @@ const T = {
       denied:"Нужен доступ к микрофону",denied2:"Разреши доступ в настройках браузера для этого сайта и нажми «Ещё раз».",
       off:"Не из категории «{c}»?\nХитро. Но я и это предвидел:",
       offTags:["Так пытаются запутать 1 из 9 людей.","Нестандартно. Но не для меня.","Предсказуемо непредсказуемый."],
+      fbTags:["Не совпало? Значит, ты в {p}% непредсказуемых. Редкость.","Если мимо — ты сломал мою статистику. Ещё раз?"],
       tags:["Так отвечают {p}% людей.","Совпадение с прогнозом: {p}%.","Твой ответ в топе статистики.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Предсказуемо."]},
   en:{intro:"I'm an AI.\nI've studied 2.4M human answers.",intro2:"Humans are predictable. Let me prove it.",start:"Test me",again:"Again",
       say:"Name the first thing that comes to mind.\nDon't think!",
@@ -165,6 +166,7 @@ const T = {
       denied:"Microphone access needed",denied2:"Allow access for this site in browser settings, then tap Again.",
       off:"Not a {c}?\nSneaky. I saw that coming too:",
       offTags:["1 in 9 people try to trick me.","Unusual. Not for me.","Predictably unpredictable."],
+      fbTags:["Missed? Then you're in the {p}% of unpredictable people. Rare.","If I missed, you broke my statistics. Again?"],
       tags:["{p}% of people answer this.","Prediction match: {p}%.","Your answer is a top statistic.","I knew before I asked.","Humans are algorithms.","Predictable."]}
 };
 
@@ -419,41 +421,61 @@ const FILLER = new Set(["ну","эм","ээ","э","мм","хм","это","так
   "um","uh","er","hmm","well","i","think","guess","maybe","let","say","is","it","the","a","an","my","choose","pick","picked","so","like"]);
 function rawGuess(text){
   const words = text.trim().split(/\s+/).filter(w => w && !FILLER.has(norm(w).replace(/[^\p{L}\p{N}-]/gu,"")));
-  if (!words.length) return null;
-  const pick = words.slice(-2).join(" ").replace(/[.,!?…]+$/,"");
+  const uniq = words.filter((w, i) => i === 0 || norm(w) !== norm(words[i-1]));
+  if (!uniq.length) return null;
+  const last = uniq.slice(-2);
+  const pick = (last.length === 2 && norm(last[0]) === norm(last[1]) ? last.slice(1) : last).join(" ").replace(/[.,!?…]+$/,"");
   if (!pick) return null;
   const name = pick.charAt(0).toUpperCase() + pick.slice(1);
   const emoji = {"Уличная еда":"🍽️","Марка машины":"🚗","Животное":"🐾","Фрукт":"🧺","Страна":"🌍","Цветок":"💐","Цвет":"🎨"}[cat.ru] || "🎯";
   return [name, name, emoji, []];
 }
 
-// Поиск картинки в Википедии (без ключей, работает прямо из браузера)
+// Википедия: картинка + короткое описание («род растений», «персонаж» …) — по нему проверяем категорию
 const HINT = {"Уличная еда":["блюдо","food"],"Марка машины":["автомобиль","car"],"Животное":["животное","animal"],
   "Фрукт":["фрукт","fruit"],"Страна":["страна","country"],"Цветок":["цветок","flower"],"Цвет":["цвет","color"]};
-async function wikiSearch(q, host, signal){
-  const url = "https://" + host + ".wikipedia.org/w/api.php?action=query&format=json&origin=*" +
-    "&generator=search&gsrlimit=5&gsrsearch=" + encodeURIComponent(q) +
-    "&prop=pageimages&piprop=thumbnail&pithumbsize=640";
-  const r = await fetch(url, {signal});
-  const j = await r.json();
-  const pages = Object.values((j.query && j.query.pages) || {}).sort((x,y) => x.index - y.index);
-  return pages.filter(p => p.thumbnail && p.thumbnail.source);
+const FITS = {
+  "Уличная еда":[/блюд|еда|пищ|кухн|продукт|выпечк|хлеб|закуск|бутерброд|сэндвич|десерт|сладост|колбас|сосис|соус|пирож|fast food|dish|food|cuisine|snack|sandwich|dessert|pastry|bread|sausage/],
+  "Марка машины":[/автомоб|автопроизв|марка|производител|компани|концерн|car\b|cars\b|automobile|automaker|vehicle|manufacturer|brand|company|motor/],
+  "Животное":[/млекопит|птиц|рыб|животн|насеком|пресмыка|рептил|змея|змей|ящериц|земновод|амфиби|паук|моллюск|ракообраз|хищн|вид |род |семейств|отряд|подвид|порода|mammal|bird|fish|animal|insect|reptile|snake|lizard|amphibian|spider|mollus|crustacean|species|genus|family|order of|breed/, /растени|гриб|минерал|plant|fung|mineral/],
+  "Фрукт":[/фрукт|плод|ягод|растени|дерев|кустарник|fruit|berry|plant|tree|shrub|genus|species/, /минерал|mineral/],
+  "Страна":[/государств|страна|республик|королевств|country|state|republic|kingdom|nation/],
+  "Цветок":[/растени|цвет|plant|flower|genus|species/, /минерал|mineral/],
+  "Цвет":[/цвет|оттен|colou?r|shade|hue/]
+};
+function fits(page){
+  const f = FITS[cat.ru]; if (!f || !page.description) return true;   // нет описания — не можем проверить, верим
+  const d = norm((page.description || "") + " " + page.title);
+  return f[0].test(d) && !(f[1] && f[1].test(d));
 }
-async function lookupImage(word, useHint){
-  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4000);
+async function wikiQuery(params, signal){
   const host = lang === "ru" ? "ru" : "en";
+  const url = "https://" + host + ".wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1" +
+    "&prop=pageimages|description|pageprops&piprop=thumbnail&pithumbsize=640&ppprop=disambiguation&" + params;
+  const j = await (await fetch(url, {signal})).json();
+  return Object.values((j.query && j.query.pages) || {})
+    .filter(p => !("missing" in p) && !(p.pageprops && "disambiguation" in p.pageprops))
+    .sort((x,y) => (x.index||0) - (y.index||0));
+}
+// → {img, ok}: ok = слово подходит к текущей категории
+async function resolveWord(word, needCheck){
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4500);
   const stem = norm(word).replace(/[^\p{L}\p{N}]/gu,"").slice(0, 4);
   const related = p => norm(p.title).replace(/[^\p{L}\p{N}]/gu,"").includes(stem);
+  const hint = HINT[cat.ru] ? HINT[cat.ru][lang === "ru" ? 0 : 1] : "";
+  let best = null;
   try {
-    if (useHint && HINT[cat.ru]) {
-      const hits = await wikiSearch(word + " " + HINT[cat.ru][lang === "ru" ? 0 : 1], host, ctrl.signal);
-      const h = hits.find(related); if (h) return h.thumbnail.source;
+    const exact = (await wikiQuery("titles=" + encodeURIComponent(word), ctrl.signal))[0];
+    if (exact) { log("wiki: " + exact.title + " | " + (exact.description || "")); best = exact; }
+    if (!exact || (needCheck && !fits(exact)) || !exact.thumbnail) {
+      const hits = (await wikiQuery("generator=search&gsrlimit=6&gsrsearch=" + encodeURIComponent(word + " " + hint), ctrl.signal)).filter(related);
+      const h = hits.find(p => fits(p) && p.thumbnail) || hits.find(fits);
+      if (h) { log("wiki+: " + h.title + " | " + (h.description || "")); best = h; }
     }
-    const hits = await wikiSearch(word, host, ctrl.signal);
-    const h = hits.find(related) || hits[0];
-    return h ? h.thumbnail.source : null;
-  } catch(e) { log("wiki: " + e.name); return null; }
+  } catch(e) { log("wiki err: " + e.name); }
   finally { clearTimeout(to); }
+  if (!best) return {img: null, ok: !needCheck};
+  return {img: best.thumbnail ? best.thumbnail.source : null, ok: !needCheck || fits(best)};
 }
 function loadImg(src){
   return new Promise(res => { const i = new Image(); i.onload = () => res(src); i.onerror = () => res(null); i.src = src; setTimeout(() => res(null), 3000); });
@@ -471,16 +493,22 @@ async function finish(id){
   // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
   // незнакомое слово → берём сказанное слово и ищем его картинку
   const inCat = match(cat, all);
-  const other = inCat ? null : matchAny(all);
-  found = inCat || other || rawGuess(curText.trim() ? curText : all);
+  const other = inCat ? null : matchAny(all);   // известное слово из другой категории
+  found = inCat || (other ? null : rawGuess(curText.trim() ? curText : all));
+  let fallback = !!other;
   log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
   let img = null;
   if (found) {
-    const name = lang === "ru" ? found[0] : found[1];
-    const src = await lookupImage(name, !other);
-    if (src) img = await loadImg(src);
-    log("img: " + (img ? "ok" : "нет"));
+    const r = await resolveWord(lang === "ru" ? found[0] : found[1], !inCat);
+    if (!r.ok) fallback = true; else if (r.img) img = await loadImg(r.img);
   }
+  // Слово не из категории — не выдаём, что слышали: показываем «статистический» прогноз
+  if (fallback) {
+    found = cat.items[Math.floor(Math.random() * 3)];
+    const r = await resolveWord(lang === "ru" ? found[0] : found[1], false);
+    img = r.img ? await loadImg(r.img) : null;
+  }
+  log("img: " + (img ? "ok" : "нет") + (fallback ? " | fallback" : ""));
   const wait = 2100 - (Date.now() - t0);
   if (wait > 0) await new Promise(r => setTimeout(r, wait));
   clearInterval(cycle);
@@ -492,8 +520,8 @@ async function finish(id){
   const box = img ? pic : em;
   box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop");
   $("r-name").textContent = lang === "ru" ? found[0] : found[1];
-  $("r-label").textContent = other ? T[lang].off.replace("{c}", cat[lang]) : T[lang].picked;
-  const tags = other ? T[lang].offTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)].replace("{p}", 18 + Math.floor(Math.random()*47));
+  $("r-label").textContent = T[lang].picked;
+  const tags = fallback ? T[lang].fbTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)].replace("{p}", fallback ? 2 + Math.floor(Math.random()*5) : 18 + Math.floor(Math.random()*47));
   show("result");
 }
 
