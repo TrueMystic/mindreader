@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MindReader AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Golos+Text:wght@400;600&display=swap">
+<style>
+/* Один экран, один крупный элемент по центру; тёмная «машинная» сцена */
+:root{
+  --bg:#0b0714; --bg2:#1d0b33; --fg:#f4f0ff; --muted:#a99cc4;
+  --accent:#ff3d8b; --accent2:#8f4dff;
+  --display:"Russo One","Arial Black",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:radial-gradient(120% 80% at 50% 0%,var(--bg2),var(--bg) 70%);
+  background-color:var(--bg);
+  color:var(--fg);font-family:var(--body);font-size:17px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  -webkit-tap-highlight-color:transparent;
+}
+.app{height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column}
+.screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;padding-block:24px}
+.screen[hidden]{display:none!important}
+h1,.title{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.1}
+h1{font-size:clamp(30px,8vw,40px)}
+.title{font-size:clamp(34px,10vw,46px)}
+.sub{color:var(--muted);font-size:19px;margin:0;line-height:1.4;white-space:pre-line}
+.big{font-size:96px;line-height:1}
+.huge{font-size:140px;line-height:1}
+.count{font-family:var(--display);font-size:120px;line-height:1;font-variant-numeric:tabular-nums}
+.bar{width:100%;height:12px;border-radius:6px;background:#ffffff1a;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.top{display:flex;justify-content:center;padding-top:16px}
+.seg{display:flex;border:1px solid #ffffff2e;border-radius:10px;overflow:hidden}
+.seg button{background:transparent;color:var(--muted);border:0;font:600 15px var(--body);padding:8px 18px;cursor:pointer}
+.seg button.on{background:#ffffff1f;color:var(--fg)}
+.btn{width:100%;border:0;border-radius:18px;padding:18px;font:400 22px var(--display);color:#fff;cursor:pointer;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));margin-bottom:24px}
+.btn:focus-visible,.seg button:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+.spin{width:56px;height:56px;border-radius:50%;border:5px solid #ffffff2a;border-top-color:var(--accent);animation:s .8s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.pop{animation:p .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes p{from{transform:scale(.4);opacity:0}}
+@media (prefers-reduced-motion:reduce){.spin,.pop{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top" id="langbar">
+    <div class="seg" role="group" aria-label="Language">
+      <button id="lang-ru" type="button">RU</button>
+      <button id="lang-en" type="button">EN</button>
+    </div>
+  </div>
+
+  <section class="screen" id="s-intro">
+    <div class="big">🤖</div>
+    <h1 data-t="intro"></h1>
+    <p class="sub" data-t="intro2"></p>
+  </section>
+
+  <section class="screen" id="s-listen" hidden>
+    <div class="title" id="cat"></div>
+    <p class="sub" data-t="say"></p>
+    <div class="count" id="count">5</div>
+    <div class="bar"><i id="bar"></i></div>
+  </section>
+
+  <section class="screen" id="s-think" hidden>
+    <div class="spin"></div>
+    <div class="title" style="font-size:28px" data-t="think"></div>
+  </section>
+
+  <section class="screen" id="s-result" hidden>
+    <p class="sub" data-t="picked"></p>
+    <div class="huge pop" id="r-emoji"></div>
+    <div class="title" id="r-name"></div>
+    <p class="sub" id="r-tag"></p>
+  </section>
+
+  <section class="screen" id="s-miss" hidden>
+    <div class="big">🤔</div>
+    <div class="title" style="font-size:30px" data-t="miss"></div>
+    <p class="sub" data-t="miss2"></p>
+  </section>
+
+  <section class="screen" id="s-err" hidden>
+    <div class="big">🔒</div>
+    <div class="title" style="font-size:26px" id="err-title"></div>
+    <p class="sub" id="err-text"></p>
+  </section>
+
+  <button class="btn" id="go" type="button"></button>
+</div>
+
+<script>
+const T = {
+  ru:{intro:"Я — AI.\nЛюди предсказуемы.",intro2:"Докажу за 5 секунд.",start:"Проверь меня",again:"Ещё раз",
+      say:"Первое, что пришло в голову.\nВслух. Быстро!",think:"Анализирую…",picked:"Ты загадал:",
+      miss:"Хм. Нестандартно мыслишь.",miss2:"Или промолчал. Давай ещё раз — громче.",
+      noApi:"Этот браузер не подходит",noApi2:"Открой ссылку в Safari на iPhone или в Chrome.",
+      denied:"Нужен микрофон",denied2:"Разреши доступ к микрофону в настройках браузера для этого сайта и нажми «Ещё раз».",
+      tags:["Слишком просто.","Как и 7 из 10 людей.","Предсказуемо.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Даже не напрягся."]},
+  en:{intro:"I'm an AI.\nHumans are predictable.",intro2:"I'll prove it in 5 seconds.",start:"Test me",again:"Again",
+      say:"First thing that comes to mind.\nOut loud. Fast!",think:"Analyzing…",picked:"You picked:",
+      miss:"Hmm. You're unusual.",miss2:"Or you stayed quiet. Again — louder.",
+      noApi:"This browser won't work",noApi2:"Open the link in Safari on iPhone or in Chrome.",
+      denied:"Microphone needed",denied2:"Allow microphone access for this site in browser settings, then tap Again.",
+      tags:["Too easy.","Just like 7 out of 10 people.","Predictable.","I knew before I asked.","Humans are algorithms.","Didn't even try."]}
+};
+
+// [ru, en, emoji, keys]  ключи: "кот" — слово целиком, "кошк*" — начало слова, "hot dog" — фраза
+const CATS = [
+ {ru:"Уличная еда",en:"Street food",items:[
+  ["Хот-дог","Hot dog","🌭",["хот-дог","хотдог*","hot dog","hotdog*","сосиск*"]],
+  ["Шаурма","Shawarma","🌯",["шаурм*","шаверм*","shawarma*","буррито","burrito*"]],
+  ["Бургер","Burger","🍔",["бургер*","гамбургер*","чизбургер*","burger*","hamburger*","cheeseburger*"]],
+  ["Пицца","Pizza","🍕",["пицц*","pizza*"]],
+  ["Тако","Taco","🌮",["тако","taco*"]],
+  ["Шашлык","Kebab","🍢",["шашлык*","кебаб*","kebab*","skewer*"]],
+  ["Картошка фри","French fries","🍟",["фри","картошк*","картофел*","fries","french fries"]],
+  ["Пончик","Donut","🍩",["пончик*","донат*","donut*","doughnut*"]],
+  ["Мороженое","Ice cream","🍦",["морожен*","ice cream","icecream"]],
+  ["Блины","Pancakes","🥞",["блины","блинчик*","pancake*","crepe*"]],
+  ["Пельмени","Dumplings","🥟",["пельмен*","чебурек*","dumpling*"]],
+  ["Попкорн","Popcorn","🍿",["попкорн*","popcorn*"]],
+  ["Крендель","Pretzel","🥨",["крендел*","брецел*","pretzel*"]],
+  ["Сэндвич","Sandwich","🥪",["сэндвич*","сендвич*","бутерброд*","sandwich*","sub"]],
+  ["Наггетсы","Chicken nuggets","🍗",["наггетс*","крылышк*","nugget*","wings","chicken"]]]},
+ {ru:"Марка машины",en:"Car brand",items:[
+  ["Toyota","Toyota","🚙",["тойот*","toyota*"]],
+  ["BMW","BMW","🚘",["бмв","бэха","бэху","бумер","bmw"]],
+  ["Mercedes","Mercedes","🚘",["мерседес*","мерс","мерина","mercedes*","benz"]],
+  ["Audi","Audi","🚘",["ауди","audi"]],
+  ["Volvo","Volvo","🚙",["вольво","volvo*"]],
+  ["Tesla","Tesla","⚡️",["тесл*","tesla*"]],
+  ["Ford","Ford","🛻",["форд*","ford*","мустанг*","mustang*"]],
+  ["Honda","Honda","🚗",["хонд*","honda*"]],
+  ["Lada","Lada","🚗",["лада","ладу","жигули","жигуль","lada"]],
+  ["Porsche","Porsche","🏎️",["порш*","porsche*"]],
+  ["Ferrari","Ferrari","🏎️",["феррари","ferrari*"]],
+  ["Lamborghini","Lamborghini","🏎️",["ламборгини","ламборджини","ламба","ламбу","lamborghini*","lambo"]],
+  ["Chevrolet","Chevrolet","🛻",["шевроле","шеви","chevrolet*","chevy"]],
+  ["Nissan","Nissan","🚗",["ниссан*","nissan*"]],
+  ["Hyundai","Hyundai","🚗",["хендай","хундай","хендэ","хюндай","hyundai*"]],
+  ["Kia","Kia","🚗",["киа","kia"]],
+  ["Volkswagen","Volkswagen","🚐",["фольксваген*","фольц","volkswagen*","vw"]],
+  ["Jeep","Jeep","🚙",["джип*","jeep*"]],
+  ["Lexus","Lexus","🚘",["лексус*","lexus*"]]]},
+ {ru:"Животное",en:"Animal",items:[
+  ["Кошка","Cat","🐱",["кошк*","кот","коты","кота","котик*","котенок*","cat","cats","kitten*","kitty"]],
+  ["Собака","Dog","🐶",["собак*","собачк*","пес","пса","щенок*","dog","dogs","puppy","puppies"]],
+  ["Лев","Lion","🦁",["лев","льва","львы","lion*"]],
+  ["Тигр","Tiger","🐯",["тигр*","tiger*"]],
+  ["Слон","Elephant","🐘",["слон*","elephant*"]],
+  ["Жираф","Giraffe","🦒",["жираф*","giraffe*"]],
+  ["Обезьяна","Monkey","🐒",["обезьян*","мартышк*","monkey*","ape","apes"]],
+  ["Медведь","Bear","🐻",["медвед*","bear","bears"]],
+  ["Волк","Wolf","🐺",["волк*","wolf","wolves"]],
+  ["Лиса","Fox","🦊",["лис","лиса","лису","лисиц*","fox*"]],
+  ["Заяц","Rabbit","🐰",["заяц","зайц*","зайк*","кролик*","rabbit*","bunny","hare"]],
+  ["Лошадь","Horse","🐴",["лошад*","конь","коня","horse*"]],
+  ["Пингвин","Penguin","🐧",["пингвин*","penguin*"]],
+  ["Дельфин","Dolphin","🐬",["дельфин*","dolphin*"]],
+  ["Змея","Snake","🐍",["змея","змею","змей","змеи","snake*"]],
+  ["Крокодил","Crocodile","🐊",["крокодил*","аллигатор*","crocodile*","alligator*"]],
+  ["Акула","Shark","🦈",["акул*","shark*"]],
+  ["Панда","Panda","🐼",["панд*","panda*"]]]},
+ {ru:"Фрукт",en:"Fruit",items:[
+  ["Яблоко","Apple","🍎",["яблок*","apple*"]],
+  ["Банан","Banana","🍌",["банан*","banana*"]],
+  ["Апельсин","Orange","🍊",["апельсин*","мандарин*","orange*","tangerine*"]],
+  ["Клубника","Strawberry","🍓",["клубник*","strawberr*"]],
+  ["Арбуз","Watermelon","🍉",["арбуз*","watermelon*"]],
+  ["Виноград","Grapes","🍇",["виноград*","grape*"]],
+  ["Ананас","Pineapple","🍍",["ананас*","pineapple*"]],
+  ["Груша","Pear","🍐",["груш*","pear","pears"]],
+  ["Вишня","Cherry","🍒",["вишн*","черешн*","cherr*"]],
+  ["Персик","Peach","🍑",["персик*","peach*"]],
+  ["Манго","Mango","🥭",["манго","mango*"]],
+  ["Лимон","Lemon","🍋",["лимон*","lemon*"]],
+  ["Киви","Kiwi","🥝",["киви","kiwi*"]],
+  ["Кокос","Coconut","🥥",["кокос*","coconut*"]]]},
+ {ru:"Страна",en:"Country",items:[
+  ["США","USA","🇺🇸",["сша","америк*","штаты","usa","america*","united states"]],
+  ["Россия","Russia","🇷🇺",["росси*","russia*"]],
+  ["Франция","France","🇫🇷",["франци*","france"]],
+  ["Италия","Italy","🇮🇹",["итали*","italy"]],
+  ["Германия","Germany","🇩🇪",["германи*","germany"]],
+  ["Япония","Japan","🇯🇵",["япони*","japan*"]],
+  ["Китай","China","🇨🇳",["китай*","китая","china"]],
+  ["Канада","Canada","🇨🇦",["канад*","canada*"]],
+  ["Мексика","Mexico","🇲🇽",["мексик*","mexico"]],
+  ["Бразилия","Brazil","🇧🇷",["бразили*","brazil*"]],
+  ["Испания","Spain","🇪🇸",["испани*","spain"]],
+  ["Турция","Turkey","🇹🇷",["турци*","turkey","turkiye"]],
+  ["Египет","Egypt","🇪🇬",["египет","египт*","egypt*"]],
+  ["Казахстан","Kazakhstan","🇰🇿",["казахстан*","kazakhstan*"]],
+  ["Беларусь","Belarus","🇧🇾",["беларус*","белорус*","belarus*"]],
+  ["Украина","Ukraine","🇺🇦",["украин*","ukrain*"]],
+  ["Англия","UK","🇬🇧",["англи*","британи*","england","britain","uk"]]]},
+ {ru:"Цвет",en:"Color",items:[
+  ["Красный","Red","🔴",["красн*","red"]],
+  ["Синий","Blue","🔵",["синий","синяя","синее","синего","синюю","blue"]],
+  ["Зелёный","Green","🟢",["зелен*","green"]],
+  ["Жёлтый","Yellow","🟡",["желт*","yellow"]],
+  ["Чёрный","Black","⚫️",["черн*","black"]],
+  ["Белый","White","⚪️",["белый","белая","белое","белого","white"]],
+  ["Фиолетовый","Purple","🟣",["фиолетов*","сиренев*","purple","violet"]],
+  ["Оранжевый","Orange","🟠",["оранжев*","orange"]],
+  ["Розовый","Pink","🩷",["розов*","pink"]],
+  ["Коричневый","Brown","🟤",["коричнев*","brown"]],
+  ["Голубой","Light blue","🩵",["голуб*","light blue","cyan","turquoise"]],
+  ["Серый","Gray","🩶",["серый","серая","серое","серого","gray","grey"]]]}
+];
+
+const DURATION = 5000;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const $ = id => document.getElementById(id);
+let lang = "ru";
+try { lang = localStorage.getItem("lang") || "ru"; } catch(e){}
+let phase = "intro", cat = null, found = null, rec = null, heard = "", runId = 0;
+
+const norm = s => s.toLowerCase().replace(/ё/g,"е");
+function match(category, text){
+  const words = norm(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const glued = words.join("");
+  let best = null, score = 0;
+  for (const it of category.items) for (const raw of it[3]) {
+    const k = norm(raw); let hit = false;
+    if (/[ -]/.test(k)) hit = glued.includes(k.replace(/[^\p{L}\p{N}]/gu,""));
+    else if (k.endsWith("*")) { const st = k.slice(0,-1); hit = words.some(w => w.startsWith(st)); }
+    else hit = words.includes(k);
+    if (hit && k.length > score) { best = it; score = k.length; }
+  }
+  return best;
+}
+
+function show(p){
+  phase = p;
+  for (const s of ["intro","listen","think","result","miss","err"]) $("s-"+s).hidden = s !== p;
+  $("langbar").style.visibility = p === "intro" ? "visible" : "hidden";
+  $("go").hidden = p === "listen" || p === "think";
+  $("go").textContent = T[lang][p === "intro" ? "start" : "again"];
+}
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = T[lang][el.dataset.t]);
+  $("lang-ru").classList.toggle("on", lang==="ru");
+  $("lang-en").classList.toggle("on", lang==="en");
+  show(phase);
+}
+$("lang-ru").onclick = () => { lang="ru"; try{localStorage.setItem("lang",lang)}catch(e){} applyLang(); };
+$("lang-en").onclick = () => { lang="en"; try{localStorage.setItem("lang",lang)}catch(e){} applyLang(); };
+
+function err(title, text){ $("err-title").textContent = title; $("err-text").textContent = text; show("err"); }
+function stopRec(){ if (rec) { try{ rec.onend = null; rec.abort(); }catch(e){} rec = null; } }
+
+function startRound(){
+  if (!SR) return err(T[lang].noApi, T[lang].noApi2);
+  const id = ++runId;
+  stopRec();
+  const others = CATS.filter(c => c !== cat);
+  cat = others[Math.floor(Math.random()*others.length)];
+  found = null; heard = "";
+  $("cat").textContent = cat[lang];
+  $("count").textContent = "5"; $("bar").style.width = "0";
+
+  rec = new SR();
+  rec.lang = lang === "ru" ? "ru-RU" : "en-US";
+  rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 3;
+  rec.onresult = e => {
+    let t = "";
+    for (let i = 0; i < e.results.length; i++)
+      for (let j = 0; j < e.results[i].length; j++) t += " " + e.results[i][j].transcript;
+    heard = t;
+  };
+  rec.onerror = e => {
+    if (id !== runId) return;
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") { runId++; stopRec(); err(T[lang].denied, T[lang].denied2); }
+  };
+  rec.onend = () => { if (id === runId && phase === "listen") { try{ rec && rec.start(); }catch(e){} } };
+  try { rec.start(); } catch(e) { return err(T[lang].noApi, T[lang].noApi2); }
+  show("listen");
+
+  const t0 = performance.now(); let matchedAt = 0;
+  (function tick(now){
+    if (id !== runId) return;
+    const el = now - t0, p = Math.min(el/DURATION, 1);
+    $("bar").style.width = (p*100) + "%";
+    $("count").textContent = Math.max(0, Math.ceil((DURATION - el)/1000));
+    const m = match(cat, heard);
+    if (m) { found = m; if (!matchedAt) matchedAt = now; }
+    if (el >= DURATION || (matchedAt && now - matchedAt > 900)) return finish(id);
+    requestAnimationFrame(tick);
+  })(t0);
+}
+
+function finish(id){
+  stopRec();
+  show("think");
+  setTimeout(() => {
+    if (id !== runId) return;
+    found = found || match(cat, heard);
+    if (found) {
+      const em = $("r-emoji"); em.textContent = found[2];
+      em.classList.remove("pop"); void em.offsetWidth; em.classList.add("pop");
+      $("r-name").textContent = lang === "ru" ? found[0] : found[1];
+      const tags = T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
+      show("result");
+    } else show("miss");
+  }, 1300);
+}
+
+$("go").onclick = startRound;
+applyLang();
+</script>
+</body>
+</html>
