@@ -210,6 +210,26 @@ def place_groups(type_labels):
     if g & {"church", "mosque", "temple"}: g.add("religious")
     return sorted(g)
 
+def trim(people, places):
+    """Ужимаем базу для телефона: убираем малоизвестное и лишние поля."""
+    people = [p for p in people if p["s"] >= 20]
+    people.sort(key=lambda x: -x["s"]); people = people[:7000]
+    for p in people:
+        p["d"] = (p.get("d") or "")[:70]
+        if p.get("e") == p.get("n"): p.pop("e", None)
+        for k in ("o2", "c"):
+            if not p.get(k): p.pop(k, None)
+        p.pop("id", None)
+    skip = {"airport", "station"}
+    places = [x for x in places if x["s"] >= 30 and not (set(x["t"]) & skip and len(set(x["t"]) - skip - {"religious", "nature"}) == 0)]
+    places.sort(key=lambda x: -x["s"]); places = places[:2500]
+    for x in places:
+        x["t"] = [t for t in x["t"] if t not in skip]
+        x["d"] = (x.get("d") or "")[:70]
+        if x.get("e") == x.get("n"): x.pop("e", None)
+        x.pop("id", None)
+    return people, places
+
 def main():
     os.makedirs("data", exist_ok=True)
     big = int(os.environ.get("BIG_SL", "90"))
@@ -305,7 +325,7 @@ def main():
     ce = entities(cont_ids, props="labels", langs="ru|en") if cont_ids else {}
     continents = {k: {"ru": lab(v, "ru"), "en": lab(v, "en")} for k, v in ce.items()}
 
-    out_people.sort(key=lambda x: -x["s"]); out_places.sort(key=lambda x: -x["s"])
+    out_people, out_places = trim(out_people, out_places)
     meta = {"countries": countries, "continents": continents}
     for name, obj in [("people", out_people), ("places", out_places), ("meta", meta)]:
         with open(f"data/{name}.json", "w", encoding="utf-8") as f:
