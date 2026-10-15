@@ -30,20 +30,20 @@ body{
 .screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;padding-block:24px}
 .screen[hidden]{display:none!important}
 h1,.title{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.1}
-h1{font-size:clamp(30px,8vw,40px)}
-.title{font-size:clamp(34px,10vw,46px)}
-.sub{color:var(--muted);font-size:19px;margin:0;line-height:1.4;white-space:pre-line}
+h1{font-size:clamp(36px,10vw,48px)}
+.title{font-size:clamp(42px,12.5vw,58px)}
+.sub{color:#d8cdef;font-size:clamp(22px,6.2vw,26px);font-weight:600;margin:0;line-height:1.4;white-space:pre-line}
 .big{font-size:96px;line-height:1}
 .huge{font-size:140px;line-height:1}
-.pic{width:min(78vw,300px);height:min(78vw,300px);object-fit:cover;border-radius:28px;box-shadow:0 20px 60px #ff3d8b40}
-.count{font-family:var(--display);font-size:120px;line-height:1;font-variant-numeric:tabular-nums}
+.pic{width:min(70vw,280px);height:min(70vw,280px);object-fit:cover;border-radius:28px;box-shadow:0 20px 60px #ff3d8b40}
+.count{font-family:var(--display);font-size:150px;line-height:1;font-variant-numeric:tabular-nums}
 .bar{width:100%;height:12px;border-radius:6px;background:#ffffff1a;overflow:hidden}
 .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
 .top{display:flex;justify-content:center;padding-top:16px}
 .seg{display:flex;border:1px solid #ffffff2e;border-radius:10px;overflow:hidden}
 .seg button{background:transparent;color:var(--muted);border:0;font:600 15px var(--body);padding:8px 18px;cursor:pointer}
 .seg button.on{background:#ffffff1f;color:var(--fg)}
-.btn{width:100%;border:0;border-radius:18px;padding:18px;font:400 22px var(--display);color:#fff;cursor:pointer;
+.btn{width:100%;border:0;border-radius:18px;padding:18px;font:400 26px var(--display);color:#fff;cursor:pointer;
   background:linear-gradient(90deg,var(--accent),var(--accent2));margin-bottom:24px}
 .btn:focus-visible,.seg button:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
 #dbg{font:12px ui-monospace,monospace;color:var(--muted);white-space:pre-wrap;max-height:30vh;overflow:auto;margin:0 0 16px}
@@ -112,14 +112,14 @@ h1{font-size:clamp(30px,8vw,40px)}
 
   <section class="screen" id="s-listen" hidden>
     <div class="title" id="cat"></div>
-    <p class="sub" data-t="say"></p>
+    <p class="sub" id="say" data-t="say"></p>
     <div class="count" id="count">6</div>
     <div class="bar"><i id="bar"></i></div>
   </section>
 
   <section class="screen" id="s-think" hidden>
     <div class="spin"></div>
-    <div class="title" style="font-size:28px" data-t="think"></div>
+    <div class="title" style="font-size:34px" data-t="think"></div>
   </section>
 
   <section class="screen" id="s-result" hidden>
@@ -132,7 +132,7 @@ h1{font-size:clamp(30px,8vw,40px)}
 
   <section class="screen" id="s-miss" hidden>
     <div class="big">🤔</div>
-    <div class="title" style="font-size:30px" data-t="miss"></div>
+    <div class="title" style="font-size:36px" data-t="miss"></div>
     <p class="sub" data-t="miss2"></p>
   </section>
 
@@ -156,6 +156,7 @@ const T = {
       denied:"Нужен доступ к микрофону",denied2:"Разреши доступ в настройках браузера для этого сайта и нажми «Ещё раз».",
       off:"Не из категории «{c}»?\nХитро. Но я и это предвидел:",
       offTags:["Так пытаются запутать 1 из 9 людей.","Нестандартно. Но не для меня.","Предсказуемо непредсказуемый."],
+      whoSay:"Представься.\nХотя я и так знаю.", whoTags:["Узнал по стилю мышления.","Дальнобойщика видно сразу.","Сто процентов. Даже считать не пришлось."],
       fbTags:["Не совпало? Значит, ты в {p}% непредсказуемых. Редкость.","Если мимо — ты сломал мою статистику. Ещё раз?"],
       tags:["Так отвечают {p}% людей.","Совпадение с прогнозом: {p}%.","Твой ответ в топе статистики.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Предсказуемо."]},
   en:{intro:"I'm an AI.\nI've studied 2.4M human answers.",intro2:"Humans are predictable. Let me prove it.",start:"Test me",again:"Again",
@@ -166,6 +167,7 @@ const T = {
       denied:"Microphone access needed",denied2:"Allow access for this site in browser settings, then tap Again.",
       off:"Not a {c}?\nSneaky. I saw that coming too:",
       offTags:["1 in 9 people try to trick me.","Unusual. Not for me.","Predictably unpredictable."],
+      whoSay:"Introduce yourself.\nThough I already know.", whoTags:["Recognized your way of thinking.","A trucker is easy to spot.","100%. Didn't even need to calculate."],
       fbTags:["Missed? Then you're in the {p}% of unpredictable people. Rare.","If I missed, you broke my statistics. Again?"],
       tags:["{p}% of people answer this.","Prediction match: {p}%.","Your answer is a top statistic.","I knew before I asked.","Humans are algorithms.","Predictable."]}
 };
@@ -366,6 +368,10 @@ const CATS = [
 ];
 
 const DURATION = 6000;
+// Секретный режим для друга: ссылка с ?sasha — во 2-м раунде (и потом иногда) категория «Кто ты?», ответ всегда «Саша-тракист»
+const PRANK = new URLSearchParams(location.search).has("sasha");
+const WHO = {ru:"Кто ты?", en:"Who are you?", prank:true, items:[["Саша-тракист","Sasha the trucker","🚛",[]]]};
+let roundNo = 0;
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const DEBUG = location.hash === "#debug";
@@ -467,8 +473,11 @@ function ensureRec(){
 function startRound(){
   if (!SR) return err(T[lang].noApi, T[lang].noApi2);
   const id = ++runId;
+  roundNo++;
   const others = CATS.filter(c => c !== cat);
-  cat = others[Math.floor(Math.random()*others.length)];
+  cat = PRANK && cat !== WHO && (roundNo === 2 || (roundNo > 3 && Math.random() < 0.25)) ? WHO
+      : others[Math.floor(Math.random()*others.length)];
+  $("say").textContent = cat.prank ? T[lang].whoSay : T[lang].say;
   found = null; doneText = ""; curText = ""; doneAlt = ""; curAlt = ""; lastErr = "";
   offset = lastLen;   // всё, что прозвучало до раунда, не считается
   $("cat").textContent = cat[lang];
@@ -622,6 +631,23 @@ function loadImg(src){
   return new Promise(res => { const i = new Image(); i.onload = () => res(src); i.onerror = () => res(null); i.src = src; setTimeout(() => res(null), 3000); });
 }
 
+async function showWho(id, t0, cycle){
+  found = WHO.items[0];
+  const src = await enwikiImage("Semi-trailer truck");
+  const img = src && await loadImg(src);
+  const wait = 2100 - (Date.now() - t0); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  clearInterval(cycle);
+  if (id !== runId) return;
+  const pic = $("r-pic"), em = $("r-emoji");
+  pic.hidden = !img; em.hidden = !!img;
+  if (img) pic.src = img; else em.textContent = "🚛";
+  const box = img ? pic : em; box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop");
+  $("r-label").textContent = T[lang].picked;
+  $("r-name").textContent = lang === "ru" ? found[0] : found[1];
+  const tags = T[lang].whoTags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
+  show("result");
+}
+
 async function finish(id){
   const text = heard();
   show("think");
@@ -632,6 +658,7 @@ async function finish(id){
   const all = text + " " + alts();
   // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
   // незнакомое слово → берём сказанное слово и ищем его картинку
+  if (cat.prank) return showWho(id, t0, cycle);
   const inCat = match(cat, all);
   const other = inCat ? null : matchAny(all);   // известное слово из другой категории
   found = inCat || (other ? null : rawGuess(curText.trim() ? curText : all));
