@@ -1,18 +1,26 @@
   sparql via qlever rows: 2042
 people(world) candidates: 2040
-  sparql via qlever rows: 4378
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 4378
 people(cis) candidates: 3190
-  sparql via qlever rows: 52
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 52
 places:tower candidates: 44
-  sparql via qlever rows: 158
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 158
 places:skyscraper candidates: 158
-  sparql via qlever rows: 94
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 94
 places:bridge candidates: 88
-  sparql via qlever rows: 402
+  sparql via qlever rows: 0
+  retry 1 IncompleteRead IncompleteRead(0 bytes read)
+  sparql via wdqs rows: 402
 places:church candidates: 359
-  sparql via qlever rows: 132
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 132
 places:mosque candidates: 132
-  sparql via qlever rows: 113
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 113
 places:temple candidates: 112
   sparql via qlever rows: 164
 places:palace candidates: 160
@@ -24,23 +32,17 @@ places:stadium candidates: 292
 places:museum candidates: 417
   sparql via qlever rows: 192
 places:statue candidates: 173
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 10
+  sparql via qlever rows: 10
 places:pyramid candidates: 10
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 113
+  sparql via qlever rows: 113
 places:theatre candidates: 92
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 7
+  sparql via qlever rows: 7
 places:dam candidates: 7
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 9
+  sparql via qlever rows: 9
 places:wall candidates: 9
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 83
+  sparql via qlever rows: 83
 places:square candidates: 83
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 383
+  sparql via qlever rows: 383
 places:park candidates: 372
   sparql via qlever rows: 0
   sparql via wdqs rows: 858
@@ -82,6 +84,7 @@ places:canyon candidates: 2
   sparql via wdqs rows: 453
 places:island candidates: 453
   sparql via qlever rows: 0
+  retry 1 IncompleteRead IncompleteRead(0 bytes read)
   sparql via wdqs rows: 470
 places:river candidates: 470
   sparql via qlever rows: 0
@@ -101,42 +104,36 @@ places:reef candidates: 1
 places:beach candidates: 5
 places total: 5414
   sparql via qlever rows: 0
-  sparql via wdqs rows: 1764
-people:Q30 Q145 Q174193 Q17 candidates: 1632
+  retry 1 JSONDecodeError Invalid control character at: line 11299 column 111 (char 286787)
+  retry 2 JSONDecodeError Invalid control character at: line 11299 column 111 (char 286787)
+  sparql wdqs failed: failed: https://query.wikidata.org/sparql?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFIX+wikibase%3A
+people:Q30 Q145 Q174193 Q17 candidates: 0
   sparql via qlever rows: 0
   sparql via wdqs rows: 764
 people:Q142 Q70972 Q71084 Q candidates: 662
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 436
+  sparql via qlever rows: 436
 people:Q38 Q172579 Q29 Q807 candidates: 391
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 257
+  sparql via qlever rows: 257
 people:Q36 Q213 Q218 Q28 Q3 candidates: 256
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 236
+  sparql via qlever rows: 236
 people:Q1747689 Q17167 Q227 candidates: 230
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 237
+  sparql via qlever rows: 237
 people:Q148 Q8733 Q17 Q1887 candidates: 223
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 190
+  sparql via qlever rows: 190
 people:Q96 Q155 Q414 Q298 Q candidates: 187
-  sparql via qlever rows: 0
-  retry 1 JSONDecodeError Invalid control character at: line 3229 column 116 (char 81987)
-  retry 2 JSONDecodeError Invalid control character at: line 3229 column 116 (char 81987)
-  sparql wdqs failed: failed: https://query.wikidata.org/sparql?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFIX+wikibase%3A
-people:Q15180 Q159 Q34266 Q candidates: 0
+  sparql via qlever rows: 337
+people:Q15180 Q159 Q34266 Q candidates: 246
 top titles: 8893
   resolved ru → entities total 3606
   resolved en → entities total 7372
 popular: people 4121 other 39
-fetching extra people: 5632
-  entities 0 / 5632
-  entities 1000 / 5632
-  entities 2000 / 5632
-  entities 3000 / 5632
-  entities 4000 / 5632
-  entities 5000 / 5632
+fetching extra people: 5087
+  entities 0 / 5087
+  entities 1000 / 5087
+  entities 2000 / 5087
+  entities 3000 / 5087
+  entities 4000 / 5087
+  entities 5000 / 5087
 fetching extra places: 5386
   entities 0 / 5386
   entities 1000 / 5386
@@ -144,10 +141,10 @@ fetching extra places: 5386
   entities 3000 / 5386
   entities 4000 / 5386
   entities 5000 / 5386
-fetching aux labels: 3829
-  entities 0 / 3829
-  entities 1000 / 3829
-  entities 2000 / 3829
-  entities 3000 / 3829
+fetching aux labels: 3769
+  entities 0 / 3769
+  entities 1000 / 3769
+  entities 2000 / 3769
+  entities 3000 / 3769
   entities 0 / 10
-DONE people: 9737 places: 5425 countries: 670
+DONE people: 7000 places: 2500 countries: 668
