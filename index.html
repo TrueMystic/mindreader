@@ -273,7 +273,7 @@ const CATS = [
   ["Лаванда","Lavender","🪻",["лаванд*","lavender"]],
   ["Одуванчик","Dandelion","🌼",["одуванчик*","dandelion*"]],
   ["Хризантема","Chrysanthemum","🏵️",["хризантем*","chrysanthemum*"]]]},
- {ru:"Цвет",en:"Color",items:[
+ {ru:"Любимый цвет",en:"Favorite color",items:[
   ["Красный","Red","🔴",["красн*","red"]],
   ["Синий","Blue","🔵",["синий","синяя","синее","синего","синюю","blue"]],
   ["Зелёный","Green","🟢",["зелен*","green"]],
@@ -427,13 +427,13 @@ function rawGuess(text){
   const pick = (last.length === 2 && norm(last[0]) === norm(last[1]) ? last.slice(1) : last).join(" ").replace(/[.,!?…]+$/,"");
   if (!pick) return null;
   const name = pick.charAt(0).toUpperCase() + pick.slice(1);
-  const emoji = {"Уличная еда":"🍽️","Марка машины":"🚗","Животное":"🐾","Фрукт":"🧺","Страна":"🌍","Цветок":"💐","Цвет":"🎨"}[cat.ru] || "🎯";
+  const emoji = {"Уличная еда":"🍽️","Марка машины":"🚗","Животное":"🐾","Фрукт":"🧺","Страна":"🌍","Цветок":"💐","Любимый цвет":"🎨"}[cat.ru] || "🎯";
   return [name, name, emoji, []];
 }
 
 // Википедия: картинка + короткое описание («род растений», «персонаж» …) — по нему проверяем категорию
 const HINT = {"Уличная еда":["блюдо","food"],"Марка машины":["автомобиль","car"],"Животное":["животное","animal"],
-  "Фрукт":["фрукт","fruit"],"Страна":["страна","country"],"Цветок":["цветок","flower"],"Цвет":["цвет","color"]};
+  "Фрукт":["фрукт","fruit"],"Страна":["страна","country"],"Цветок":["цветок","flower"],"Любимый цвет":["цвет","color"]};
 const FITS = {
   "Уличная еда":[/блюд|еда|пищ|кухн|продукт|выпечк|хлеб|закуск|бутерброд|сэндвич|десерт|сладост|колбас|сосис|соус|пирож|fast food|dish|food|cuisine|snack|sandwich|dessert|pastry|bread|sausage/],
   "Марка машины":[/автомоб|автопроизв|марка|производител|компани|концерн|car\b|cars\b|automobile|automaker|vehicle|manufacturer|brand|company|motor/],
@@ -441,7 +441,7 @@ const FITS = {
   "Фрукт":[/фрукт|плод|ягод|растени|дерев|кустарник|fruit|berry|plant|tree|shrub|genus|species/, /минерал|mineral/],
   "Страна":[/государств|страна|республик|королевств|country|state|republic|kingdom|nation/],
   "Цветок":[/растени|цвет|plant|flower|genus|species/, /минерал|mineral/],
-  "Цвет":[/цвет|оттен|colou?r|shade|hue/]
+  "Любимый цвет":[/цвет|оттен|colou?r|shade|hue/]
 };
 function fits(page){
   const f = FITS[cat.ru]; if (!f || !page.description) return true;   // нет описания — не можем проверить, верим
@@ -495,7 +495,7 @@ async function finish(id){
   const inCat = match(cat, all);
   const other = inCat ? null : matchAny(all);   // известное слово из другой категории
   found = inCat || (other ? null : rawGuess(curText.trim() ? curText : all));
-  let fallback = !!other;
+  let fallback = !!other || !found;   // молчание тоже → «статистический» прогноз
   log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
   let img = null;
   if (found) {
@@ -513,7 +513,6 @@ async function finish(id){
   if (wait > 0) await new Promise(r => setTimeout(r, wait));
   clearInterval(cycle);
   if (id !== runId) return;
-  if (!found) return show("miss");
   const pic = $("r-pic"), em = $("r-emoji");
   pic.hidden = !img; em.hidden = !!img;
   if (img) pic.src = img; else em.textContent = found[2];
