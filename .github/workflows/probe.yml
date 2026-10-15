@@ -1,0 +1,7 @@
+name: probe
+on: [push, workflow_dispatch]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -s -o /dev/null -w "%{http_code}\n" "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q42&format=json"
