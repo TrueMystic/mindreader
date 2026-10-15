@@ -243,7 +243,7 @@ const CATS = [
   ["Киви","Kiwi","🥝",["киви","kiwi*"]],
   ["Кокос","Coconut","🥥",["кокос*","coconut*"]]]},
  {ru:"Страна",en:"Country",items:[
-  ["США","USA","🇺🇸",["сша","америк*","штаты","usa","america*","united states"]],
+  ["США","United States","🇺🇸",["сша","америк*","штаты","usa","america*","united states"]],
   ["Россия","Russia","🇷🇺",["росси*","russia*"]],
   ["Франция","France","🇫🇷",["франци*","france"]],
   ["Италия","Italy","🇮🇹",["итали*","italy"]],
@@ -259,7 +259,7 @@ const CATS = [
   ["Казахстан","Kazakhstan","🇰🇿",["казахстан*","kazakhstan*"]],
   ["Беларусь","Belarus","🇧🇾",["беларус*","белорус*","belarus*"]],
   ["Украина","Ukraine","🇺🇦",["украин*","ukrain*"]],
-  ["Англия","UK","🇬🇧",["англи*","британи*","england","britain","uk"]]]},
+  ["Англия","United Kingdom","🇬🇧",["англи*","британи*","england","britain","uk"]]]},
  {ru:"Цветок",en:"Flower",items:[
   ["Роза","Rose","🌹",["роз*","rose*"]],
   ["Тюльпан","Tulip","🌷",["тюльпан*","tulip*"]],
@@ -451,7 +451,7 @@ function fits(page){
 async function wikiQuery(params, signal){
   const host = lang === "ru" ? "ru" : "en";
   const url = "https://" + host + ".wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1" +
-    "&prop=pageimages|description|pageprops&piprop=thumbnail&pithumbsize=640&ppprop=disambiguation&" + params;
+    "&prop=pageimages|description|pageprops|langlinks&lllang=en&piprop=thumbnail&pithumbsize=640&ppprop=disambiguation&" + params;
   const j = await (await fetch(url, {signal})).json();
   return Object.values((j.query && j.query.pages) || {})
     .filter(p => !("missing" in p) && !(p.pageprops && "disambiguation" in p.pageprops))
@@ -474,9 +474,38 @@ async function resolveWord(word, needCheck){
     }
   } catch(e) { log("wiki err: " + e.name); }
   finally { clearTimeout(to); }
-  if (!best) return {img: null, ok: !needCheck};
-  return {img: best.thumbnail ? best.thumbnail.source : null, ok: !needCheck || fits(best)};
+  if (!best) return {img: null, ok: !needCheck, en: lang === "en" ? word : null};
+  const en = lang === "en" ? best.title : (best.langlinks && best.langlinks[0] && best.langlinks[0]["*"]) || null;
+  return {img: best.thumbnail ? best.thumbnail.source : null, ok: !needCheck || fits(best), en};
 }
+// Фото из Wikimedia Commons: ищем «название + слово категории», берём настоящие фото (jpeg), не логотипы и карты
+const PHOTO_HINT = {"Уличная еда":"food","Марка машины":"car","Животное":"","Фрукт":"fruit","Цветок":"flower"};
+async function commonsImage(name){
+  if (!name || !(cat.ru in PHOTO_HINT || cat.ru === "Страна")) return null;
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4000);
+  const base = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url|mime&iiurlwidth=640&";
+  try {
+    let pages;
+    if (cat.ru === "Страна") {
+      const t = ["Flag of the " + name + ".svg", "Flag of " + name + ".svg"].map(encodeURIComponent).join("|");
+      pages = Object.values(((await (await fetch(base + "titles=" + t, {signal: ctrl.signal})).json()).query || {}).pages || {});
+    } else {
+      const q = encodeURIComponent((name + " " + PHOTO_HINT[cat.ru]).trim() + " filetype:bitmap");
+      pages = Object.values(((await (await fetch(base + "generator=search&gsrnamespace=6&gsrlimit=10&gsrsearch=" + q, {signal: ctrl.signal})).json()).query || {}).pages || {})
+        .sort((x,y) => (x.index||0) - (y.index||0))
+        .filter(p => p.imageinfo && /jpeg/.test(p.imageinfo[0].mime) && !/logo|map|karte|diagram|icon|emblem|plan|chart|drawing|sign/i.test(p.title));
+    }
+    const p = pages.find(p => p.imageinfo && p.imageinfo[0].thumburl);
+    log("commons: " + (p ? p.title : "нет"));
+    return p ? p.imageinfo[0].thumburl : null;
+  } catch(e) { log("commons err: " + e.name); return null; }
+  finally { clearTimeout(to); }
+}
+async function bestImage(r, enName){
+  const c = await commonsImage(enName || r.en);
+  return (c && await loadImg(c)) || (r.img && await loadImg(r.img)) || null;
+}
+
 function loadImg(src){
   return new Promise(res => { const i = new Image(); i.onload = () => res(src); i.onerror = () => res(null); i.src = src; setTimeout(() => res(null), 3000); });
 }
@@ -500,13 +529,13 @@ async function finish(id){
   let img = null;
   if (found) {
     const r = await resolveWord(lang === "ru" ? found[0] : found[1], !inCat);
-    if (!r.ok) fallback = true; else if (r.img) img = await loadImg(r.img);
+    if (!r.ok) fallback = true; else img = await bestImage(r, inCat ? found[1] : null);
   }
   // Слово не из категории — не выдаём, что слышали: показываем «статистический» прогноз
   if (fallback) {
     found = cat.items[Math.floor(Math.random() * 3)];
     const r = await resolveWord(lang === "ru" ? found[0] : found[1], false);
-    img = r.img ? await loadImg(r.img) : null;
+    img = await bestImage(r, found[1]);
   }
   log("img: " + (img ? "ok" : "нет") + (fallback ? " | fallback" : ""));
   const wait = 2100 - (Date.now() - t0);
