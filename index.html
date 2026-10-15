@@ -368,10 +368,11 @@ const CATS = [
 ];
 
 const DURATION = 6000;
-// Секретный режим для друга: ссылка с ?sasha — во 2-м раунде (и потом иногда) категория «Кто ты?», ответ всегда «Саша-тракист»
+// Секретный режим для друга: ссылка с ?sasha — один раз, в 3-м или 4-м раунде, категория «Кто ты?», ответ всегда «Саша-тракист»
 const PRANK = new URLSearchParams(location.search).has("sasha");
 const WHO = {ru:"Кто ты?", en:"Who are you?", prank:true, items:[["Саша-тракист","Sasha the trucker","🚛",[]]]};
 let roundNo = 0;
+const whoRound = 3 + Math.floor(Math.random() * 2);   // «Кто ты?» — один раз, в 3-м или 4-м раунде
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const DEBUG = location.hash === "#debug";
@@ -475,7 +476,7 @@ function startRound(){
   const id = ++runId;
   roundNo++;
   const others = CATS.filter(c => c !== cat);
-  cat = PRANK && cat !== WHO && (roundNo === 2 || (roundNo > 3 && Math.random() < 0.25)) ? WHO
+  cat = PRANK && roundNo === whoRound ? WHO
       : others[Math.floor(Math.random()*others.length)];
   $("say").textContent = cat.prank ? T[lang].whoSay : T[lang].say;
   found = null; doneText = ""; curText = ""; doneAlt = ""; curAlt = ""; lastErr = "";
