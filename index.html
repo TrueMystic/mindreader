@@ -805,7 +805,7 @@ const CATS = [
 ];
 
 // Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
-const BUILD = "1792041904";
+const BUILD = "1792043953";
 (async () => {
   try {
     const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
@@ -1267,28 +1267,127 @@ const PLACE_Q = {
   desert:["Это пустыня?","Is it a desert?"], glacier:["Это ледник?","Is it a glacier?"], cave:["Это пещера?","Is it a cave?"], reef:["Это риф?","Is it a reef?"], beach:["Это пляж?","Is it a beach?"]
 };
 
+// Регионы вместо перечисления стран
+const REG = {
+  anglo: ["Q30","Q145","Q16","Q408","Q27","Q664","Q174193","Q179876"],
+  exussr: ["Q15180","Q159","Q34266","Q212","Q184","Q232","Q265","Q230","Q399","Q227","Q211","Q37","Q191","Q217","Q813","Q863","Q874"],
+  latam: ["Q96","Q155","Q414","Q298","Q739","Q419","Q717","Q77","Q241","Q736","Q750","Q733","Q786","Q800","Q804","Q774","Q783","Q792","Q811","Q1183"],
+  iberian: ["Q29","Q45"],
+  arab: ["Q79","Q851","Q878","Q796","Q858","Q822","Q810","Q1028","Q262","Q948","Q1016","Q817","Q846","Q842","Q805","Q398","Q1049"],
+  eastasia: ["Q148","Q17","Q884","Q423","Q865","Q8733","Q13426199"],
+  weurope: ["Q142","Q183","Q38","Q55","Q31","Q39","Q40","Q34","Q20","Q35","Q33","Q70972","Q43287","Q7318","Q27306","Q172579","Q71084","Q41304","Q12548","Q28513"],
+  ancient: ["Q1747689","Q17167","Q2277","Q11772","Q12544"]
+};
+const REG_Q = {
+  anglo: ["Этот человек из англоязычной страны?", "Is this person from an English-speaking country?", "Это в англоязычной стране?", "Is it in an English-speaking country?"],
+  exussr: ["Этот человек из бывшего СССР (или России до него)?", "Is this person from the former USSR (or Russia)?", "Это на территории бывшего СССР?", "Is it in the former USSR?"],
+  latam: ["Этот человек из Латинской Америки?", "Is this person from Latin America?", "Это в Латинской Америке?", "Is it in Latin America?"],
+  iberian: ["Этот человек из Испании или Португалии?", "Is this person from Spain or Portugal?", "Это в Испании или Португалии?", "Is it in Spain or Portugal?"],
+  arab: ["Этот человек из арабского мира?", "Is this person from the Arab world?", "Это в арабской стране?", "Is it in an Arab country?"],
+  eastasia: ["Этот человек из Восточной Азии (Китай, Япония, Корея)?", "Is this person from East Asia?", "Это в Восточной Азии?", "Is it in East Asia?"],
+  weurope: ["Этот человек из Западной или Северной Европы (не Англия)?", "Is this person from Western or Northern Europe (not UK)?", "Это в Западной Европе?", "Is it in Western Europe?"],
+  ancient: ["Этот человек жил в Древнем мире (Рим, Греция)?", "Did this person live in the ancient world?", "Это сохранилось с античных времён?", "Is it from antiquity?"]
+};
+const inReg = (it, r) => it.c && it.c.length ? it.c.some(c => REG[r].includes(c)) : null;
+const has = (arr, x) => !!(arr && arr.includes(x));
+const anyOf = (arr, xs) => !!(arr && xs.some(x => arr.includes(x)));
+const NOW = new Date().getFullYear();
+
 function g2Questions(){
-  const L = lang === "ru" ? 0 : 1, qs = [], items = G2.items, meta = G2.meta;
-  const countryName = c => (meta.countries[c] || {})[lang === "ru" ? "ru" : "en"] || c;
+  const L = lang === "ru" ? 0 : 1, qs = [], meta = G2.meta, P = G2.kind === "people";
+  const add = (fam, id, ru, en, f, opts) => qs.push(Object.assign({fam, id, t: L ? en : ru, f}, opts || {}));
+  const countryName = c => (meta.countries[c] || {})[L ? "en" : "ru"] || c;
   const contOf = it => { const c = it.c && it.c[0]; return c && meta.countries[c] ? meta.countries[c].ct : null; };
-  // страны и континенты, встречающиеся у живых кандидатов
-  const cnt = {}, conts = {};
-  items.forEach((it, i) => { if (!G2.w[i]) return; (it.c || []).forEach(c => cnt[c] = (cnt[c] || 0) + G2.w[i]); const k = contOf(it); if (k) conts[k] = 1; });
-  const topC = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
-  Object.keys(conts).forEach(k => { if (CONT_RU[k]) qs.push({id: "ct:" + k, t: L ? `Is it from ${CONT_EN[k]}?` : (G2.kind === "people" ? `Этот человек из ${CONT_RU[k]}?` : `Это находится в ${({Q46:"Европе",Q48:"Азии",Q49:"Северной Америке",Q18:"Южной Америке",Q15:"Африке",Q538:"Океании",Q55643:"Океании",Q3960:"Австралии",Q51:"Антарктиде"})[k]}?`), f: it => { const x = contOf(it); return x == null ? null : x === k; }}); });
-  topC.forEach(c => qs.push({id: "c:" + c, t: L ? `Is it connected to ${countryName(c)}?` : (G2.kind === "people" ? `Страна этого человека — ${countryName(c)}?` : `Это в стране ${countryName(c)}?`), f: it => it.c && it.c.length ? it.c.includes(c) : null}));
-  if (G2.kind === "people") {
-    qs.push({id: "male", t: L ? "Is it a man?" : "Это мужчина?", f: it => it.g ? it.g === "m" : null});
-    qs.push({id: "alive", t: L ? "Is this person alive?" : "Этот человек жив?", f: it => it.dd ? false : (it.b ? it.b > 1915 : null)});
-    [1800, 1900, 1940, 1960, 1975, 1985, 1995].forEach(y => qs.push({id: "b" + y, t: L ? `Born after ${y}?` : `Родился(-ась) после ${y} года?`, f: it => it.b == null ? null : it.b > y}));
-    qs.push({id: "world", t: L ? "Is this person known all over the world?" : "Этого человека знают во всём мире?", f: it => it.s >= 110});
-    Object.keys(OCC_Q).forEach(o => qs.push({id: "o:" + o, t: OCC_Q[o][L], f: it => it.o.includes(o) ? true : (it.o2 && it.o2.includes(o) ? null : false)}));
+  // регионы и континенты
+  Object.keys(REG).forEach(r => add("region", "r:" + r, REG_Q[r][P ? 0 : 2], REG_Q[r][P ? 1 : 3], it => inReg(it, r)));
+  ["Q46","Q48","Q49","Q15","Q18"].forEach(k => add("region", "ct:" + k,
+     P ? `Этот человек из ${CONT_RU[k]}?` : `Это находится в ${({Q46:"Европе",Q48:"Азии",Q49:"Северной Америке",Q18:"Южной Америке",Q15:"Африке"})[k]}?`,
+     P ? `Is this person from ${CONT_EN[k]}?` : `Is it in ${CONT_EN[k]}?`, it => { const x = contOf(it); return x == null ? null : x === k; }));
+  // конкретные страны — только под конец (см. g2Pick)
+  const cnt = {};
+  G2.items.forEach((it, i) => { if (G2.w[i]) (it.c || []).forEach(c => cnt[c] = (cnt[c] || 0) + G2.w[i]); });
+  Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 4).forEach(([c]) =>
+    add("country", "c:" + c, P ? `Этот человек связан со страной ${countryName(c)}?` : `Это в стране ${countryName(c)}?`,
+        P ? `Is this person connected to ${countryName(c)}?` : `Is it in ${countryName(c)}?`, it => it.c && it.c.length ? it.c.includes(c) : null, {late: true}));
+
+  if (P) {
+    add("gender", "male", "Это мужчина?", "Is it a man?", it => it.g ? it.g === "m" : null);
+    // сферы — широко
+    add("sphere", "s:sport", "Этот человек связан со спортом?", "Is this person connected to sports?", it => has(it.o, "athlete") || (anyOf(it.o2, ["athlete"]) ? null : false));
+    add("sphere", "s:show", "Этот человек из мира шоу-бизнеса, кино или музыки?", "Is this person from show business, film or music?",
+        it => anyOf(it.o, ["actor","singer","musician","director","tv","model","blogger","dancer","rapper"]) || (anyOf(it.o2, ["actor","singer","musician","tv"]) ? null : false));
+    add("sphere", "s:power", "Этот человек связан с властью, политикой или войной?", "Is this person connected to power, politics or war?",
+        it => anyOf(it.o, ["politician","monarch","military"]) || (anyOf(it.o2, ["politician","monarch","military"]) ? null : false));
+    add("sphere", "s:mind", "Этот человек прославился умом или творчеством — наука, книги, искусство?", "Famous for intellect or art — science, books, painting?",
+        it => anyOf(it.o, ["scientist","writer","philosopher","artist","religious","cosmonaut"]) || (anyOf(it.o2, ["scientist","writer","philosopher","artist"]) ? null : false));
+    add("sphere", "s:money", "Этот человек известен деньгами или бизнесом?", "Is this person known for money or business?", it => has(it.o, "business") || (has(it.o2, "business") ? null : false));
+    // уточнения внутри сфер
+    add("sport", "sp:ball", "Он(а) играет (играл) с мячом?", "Does (did) this person play with a ball?",
+        it => has(it.o, "athlete") ? anyOf(it.o, ["football","basketball","tennis"]) || null : false);
+    add("sport", "sp:team", "Это командный вид спорта?", "Is it a team sport?",
+        it => has(it.o, "athlete") ? anyOf(it.o, ["football","basketball","hockey"]) || null : false);
+    add("sport", "sp:fight", "Этот человек дерётся — бокс, ММА, борьба?", "Does this person fight — boxing, MMA, wrestling?", it => anyOf(it.o, ["boxer","fighter"]));
+    add("show", "sh:screen", "Этого человека чаще видят на экране, чем слышат?", "Is this person seen on screen more than heard?",
+        it => anyOf(it.o, ["actor","tv","model","blogger"]) ? true : (anyOf(it.o, ["singer","musician","rapper"]) ? false : null));
+    add("show", "sh:stage", "Этот человек выступает на сцене с песнями?", "Does this person sing on stage?", it => anyOf(it.o, ["singer","rapper"]) || (anyOf(it.o2, ["singer"]) ? null : false));
+    add("show", "sh:net", "Этот человек прославился в интернете?", "Did this person become famous on the internet?", it => has(it.o, "blogger") || (has(it.o2, "blogger") ? null : false));
+    add("power", "pw:crown", "Этот человек носил корону?", "Did this person wear a crown?", it => has(it.o, "monarch") || (has(it.o2, "monarch") ? null : false));
+    add("power", "pw:war", "Этот человек командовал армиями?", "Did this person command armies?", it => has(it.o, "military") || (has(it.o2, "military") ? null : false));
+    add("mind", "md:sci", "Этот человек что-то открыл или изобрёл?", "Did this person discover or invent something?", it => anyOf(it.o, ["scientist"]) || (has(it.o2, "scientist") ? null : false));
+    add("mind", "md:pen", "Этот человек писал книги или стихи?", "Did this person write books or poems?", it => has(it.o, "writer") || (has(it.o2, "writer") ? null : false));
+    add("mind", "md:space", "Этот человек был в космосе?", "Has this person been to space?", it => has(it.o, "cosmonaut"));
+    add("mind", "md:faith", "Этот человек связан с религией?", "Is this person connected to religion?", it => has(it.o, "religious") || (has(it.o2, "religious") ? null : false));
+    // конкретные профессии — после сфер
+    Object.keys(OCC_Q).forEach(o => add("occ", "o:" + o, OCC_Q[o][0], OCC_Q[o][1], it => it.o.includes(o) ? true : (it.o2 && it.o2.includes(o) ? null : false), {mid: true}));
+    // эпоха
+    add("era", "alive", "Этот человек сейчас жив?", "Is this person alive?", it => it.dd ? false : (it.b ? it.b > 1920 : null));
+    add("era", "ancient", "Этот человек жил больше тысячи лет назад?", "Did this person live over 1000 years ago?", it => it.b == null ? null : it.b < 1000);
+    add("era", "old", "Этот человек жил до XX века?", "Did this person live before the 20th century?", it => it.b == null ? null : it.b < 1880);
+    add("era", "young", "Этому человеку меньше 35 лет?", "Is this person under 35?", it => it.b == null || it.dd ? (it.dd ? false : null) : it.b > NOW - 35);
+    add("era", "over60", "Этому человеку за 60 (или было бы)?", "Is (or would) this person be over 60?", it => it.b == null ? null : it.b < NOW - 60);
+    [1950, 1970, 1985].forEach(y => add("era", "b" + y, `Этот человек родился после ${y} года?`, `Born after ${y}?`, it => it.b == null ? null : it.b > y, {mid: true}));
+    // слава
+    add("fame", "world", "Этого человека знают по всему миру?", "Is this person known worldwide?", it => it.s >= 110);
+    add("fame", "local", "Этого человека знают в основном у нас, в странах бывшего СССР?", "Is this person famous mostly in the former USSR?", it => inReg(it, "exussr") && it.s < 80);
+    // награды
+    [["oscar","Получал «Оскар»?","Won an Oscar?"],["grammy","Получал «Грэмми»?","Won a Grammy?"],["nobel","Нобелевский лауреат?","A Nobel laureate?"],
+     ["ballon","Получал «Золотой мяч»?","Won the Ballon d'Or?"],["olympic","Выступал(а) на Олимпийских играх?","Competed at the Olympics?"],
+     ["hero","Получал звание Героя (СССР или России)?","Hero of the USSR or Russia?"],["globe","Получал «Золотой глобус»?","Won a Golden Globe?"],
+     ["knight","Был посвящён в рыцари британской короной?","Knighted by the British crown?"]]
+      .forEach(([a, ru, en]) => add("award", "aw:" + a, ru, en, it => has(it.aw, a)));
+    // личная жизнь и внешность — «неожиданные» вопросы
+    add("life", "married2", "Был(а) в браке больше одного раза?", "Married more than once?", it => it.sp ? it.sp >= 2 : null);
+    add("life", "kids", "У этого человека есть дети?", "Does this person have children?", it => it.ch ? true : (it.sp ? null : null));
+    add("life", "kids4", "У этого человека больше трёх детей?", "More than three children?", it => it.ch ? it.ch >= 4 : null);
+    add("body", "left", "Этот человек левша?", "Is this person left-handed?", it => it.lh == null ? null : it.lh === 1);
+    add("body", "tall", "Рост этого человека выше 185 см?", "Taller than 185 cm?", it => it.h ? it.h > 185 : null);
+    add("body", "blond", "У этого человека светлые волосы?", "Does this person have blond hair?", it => it.hr ? it.hr === "blond" : null);
+    add("body", "bald", "Этот человек лысый?", "Is this person bald?", it => it.hr ? it.hr === "bald" : null);
+    add("body", "blueeyes", "У этого человека голубые или серые глаза?", "Blue or grey eyes?", it => it.ey ? it.ey === "blue" : null);
+    add("social", "fol", "У этого человека миллионы подписчиков в соцсетях?", "Millions of followers on social media?",
+        it => it.fol ? it.fol >= 1 : (it.ig ? null : (it.b && it.b < 1940 ? false : null)));
+    // команды — только в конце
+    const tc = {};
+    G2.items.forEach((it, i) => { if (G2.w[i] && it.tm) it.tm.forEach(t => tc[t] = (tc[t] || 0) + G2.w[i]); });
+    Object.entries(tc).sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([t]) => {
+      const nm = (meta.teams || {})[t]; if (!nm) return;
+      add("team", "tm:" + t, `Этот человек играл за «${nm}»?`, `Did this person play for ${nm}?`, it => it.tm ? it.tm.includes(t) : (has(it.o, "athlete") ? false : false), {late: true});
+    });
   } else {
-    Object.keys(PLACE_Q).forEach(t => qs.push({id: "t:" + t, t: PLACE_Q[t][L], f: it => it.t.includes(t)}));
-    [0, 1000, 1500, 1800, 1900, 1950, 1990].forEach(y => qs.push({id: "y" + y, t: L ? `Built after ${y}?` : (y === 0 ? "Это построено в нашей эре (после 0 года)?" : `Это построено после ${y} года?`), f: it => it.y == null || it.t.includes("nature") ? null : it.y > y}));
-    [50, 100, 200, 300].forEach(h => qs.push({id: "h" + h, t: L ? `Is it taller than ${h} m?` : `Высота больше ${h} метров?`, f: it => it.h == null || it.t.includes("nature") ? null : it.h > h}));
-    [2000, 4000, 7000].forEach(h => qs.push({id: "m" + h, t: L ? `Is it higher than ${h} m above sea level?` : `Это выше ${h} метров над уровнем моря?`, f: it => it.h == null || !it.t.includes("nature") ? null : it.h > h}));
-    qs.push({id: "world", t: L ? "Is it known all over the world?" : "Это место знают во всём мире?", f: it => it.s >= 90});
+    add("kind", "nature", PLACE_Q.nature[0], PLACE_Q.nature[1], it => it.t.includes("nature"));
+    add("kind", "religious", PLACE_Q.religious[0], PLACE_Q.religious[1], it => it.t.includes("religious"));
+    add("kind", "inside", "Внутрь этого можно зайти?", "Can you go inside it?",
+        it => anyOf(it.t, ["museum","palace","church","mosque","temple","theatre","stadium","hotel","station","airport","government","castle","skyscraper","cave"]) ? true : (anyOf(it.t, ["statue","bridge","square","mountain","lake","river","island","waterfall","volcano","wall","dam"]) ? false : null));
+    add("kind", "water", "Это связано с водой?", "Is it connected to water?", it => anyOf(it.t, ["lake","river","waterfall","island","reef","beach","bridge","dam","lighthouse"]) ? true : (it.t.length ? false : null));
+    add("kind", "tall", "Это что-то высокое, устремлённое вверх?", "Is it something tall, reaching up?", it => anyOf(it.t, ["tower","skyscraper","mountain","volcano","lighthouse","statue"]) ? true : (anyOf(it.t, ["lake","river","square","park","beach","cave","canyon","desert","bridge","wall"]) ? false : null));
+    Object.keys(PLACE_Q).filter(t => !["nature","religious"].includes(t)).forEach(t => add("type", "t:" + t, PLACE_Q[t][L], PLACE_Q[t][L], it => it.t.includes(t), {mid: true}));
+    add("era", "old", "Этому больше 500 лет?", "Is it more than 500 years old?", it => it.t.includes("nature") ? true : (it.y == null ? null : it.y < NOW - 500));
+    add("era", "modern", "Это построено в последние 50 лет?", "Built in the last 50 years?", it => it.t.includes("nature") ? false : (it.y == null ? null : it.y > NOW - 50));
+    add("era", "y1900", "Это построено до 1900 года?", "Built before 1900?", it => it.t.includes("nature") ? null : (it.y == null ? null : it.y < 1900), {mid: true});
+    [100, 300].forEach(h => add("size", "h" + h, `Высота больше ${h} метров?`, `Taller than ${h} m?`, it => it.h == null || it.t.includes("nature") ? null : it.h > h));
+    [3000, 6000].forEach(h => add("size", "m" + h, `Это выше ${h} метров над уровнем моря?`, `Higher than ${h} m above sea level?`, it => it.h == null || !it.t.includes("nature") ? null : it.h > h));
+    add("fame", "world", "Это место знают во всём мире?", "Is it known worldwide?", it => it.s >= 90);
+    add("fame", "tourist", "Туда толпами едут туристы?", "Do crowds of tourists go there?", it => it.s >= 70 ? true : (it.s < 40 ? false : null));
   }
   return qs;
 }
@@ -1296,8 +1395,14 @@ function g2Questions(){
 function g2Pick(){
   const qs = g2Questions().filter(q => !G2.asked.has(q.id));
   const total = G2.w.reduce((a, b) => a + b, 0);
-  let best = null, bestScore = -1;
+  const famCount = {}; G2.famHist.forEach(f => famCount[f] = (famCount[f] || 0) + 1);
+  const last = G2.famHist[G2.famHist.length - 1], recent = G2.famHist.slice(-3);
+  const top = g2Top();
+  const scored = [];
   for (const q of qs) {
+    // конкретика (страны, клубы) — только когда круг уже узкий
+    if (q.late && (G2.n < 8 || top.pa < 0.15 || (famCount[q.fam] || 0) >= 1)) continue;
+    if (q.mid && G2.n < 4) continue;
     let yes = 0, known = 0;
     for (let i = 0; i < G2.items.length; i++) {
       const w = G2.w[i]; if (!w) continue;
@@ -1306,15 +1411,25 @@ function g2Pick(){
     }
     if (!known) continue;
     const p = yes / known, cov = known / total;
-    const score = cov * (1 - Math.abs(2 * p - 1)) * (0.9 + Math.random() * 0.2);
-    if (score > bestScore) { bestScore = score; best = q; }
+    let score = cov * (1 - Math.abs(2 * p - 1));
+    if (q.fam === last) score *= 0.12;                 // не задаём однотипные вопросы подряд
+    else if (recent.includes(q.fam)) score *= 0.5;
+    score *= 1 / (1 + 0.35 * (famCount[q.fam] || 0));  // разнообразие
+    if (q.fam === "occ" && (famCount.occ || 0) >= 3) score *= 0.3;
+    if (score > 0.01) scored.push([score, q]);
   }
-  return bestScore > 0.02 ? best : null;
+  if (!scored.length) return null;
+  scored.sort((a, b) => b[0] - a[0]);
+  // немного случайности: каждый раз чуть разные вопросы
+  const pool = scored.slice(0, G2.n < 4 ? 4 : 2);
+  const sum = pool.reduce((a, x) => a + x[0], 0); let r = Math.random() * sum;
+  for (const [sc, q] of pool) { r -= sc; if (r <= 0) return q; }
+  return pool[0][1];
 }
 
 function g2Answer(a){
   const q = G2.q; if (!q) return;
-  G2.asked.add(q.id); G2.hist.push(q.t + " → " + a);
+  G2.asked.add(q.id); G2.famHist.push(q.fam); G2.hist.push(q.t + " → " + a);
   for (let i = 0; i < G2.items.length; i++) {
     if (!G2.w[i]) continue;
     const v = q.f(G2.items[i]);
@@ -1380,7 +1495,7 @@ async function g2Start(kind){
   } catch(e) { $("g2-endemoji").textContent = "📡"; $("g2-endtitle").textContent = ""; $("g2-endsub").textContent = T[lang].g2err; return show("g2end"); }
   G2.items = G2.cache[kind];
   G2.w = G2.items.map(it => Math.pow(it.s || 10, 1.3));   // известные — вероятнее
-  G2.asked = new Set(); G2.n = 0; G2.guesses = 0; G2.hist = []; G2.q = null;
+  G2.asked = new Set(); G2.famHist = []; G2.n = 0; G2.guesses = 0; G2.hist = []; G2.q = null;
   g2Next();
 }
 
