@@ -493,7 +493,10 @@ async function commonsImage(name){
       const q = encodeURIComponent((name + " " + PHOTO_HINT[cat.ru]).trim() + " filetype:bitmap");
       pages = Object.values(((await (await fetch(base + "generator=search&gsrnamespace=6&gsrlimit=10&gsrsearch=" + q, {signal: ctrl.signal})).json()).query || {}).pages || {})
         .sort((x,y) => (x.index||0) - (y.index||0))
-        .filter(p => p.imageinfo && /jpeg/.test(p.imageinfo[0].mime) && !/logo|map|karte|diagram|icon|emblem|plan|chart|drawing|sign/i.test(p.title));
+        .filter(p => p.imageinfo && /jpeg/.test(p.imageinfo[0].mime) && !/logo|map|karte|diagram|icon|emblem|plan|chart|drawing|sign|accident|crash|museum|factory|plant|headquarter|building|dealer|store|shop/i.test(p.title));
+      // название должно быть в имени файла — иначе это случайное фото
+      const key = name.toLowerCase().split(/[\s-]+/)[0];
+      pages = pages.filter(p => p.title.toLowerCase().includes(key));
     }
     const p = pages.find(p => p.imageinfo && p.imageinfo[0].thumburl);
     log("commons: " + (p ? p.title : "нет"));
@@ -525,7 +528,7 @@ async function finish(id){
   const other = inCat ? null : matchAny(all);   // известное слово из другой категории
   found = inCat || (other ? null : rawGuess(curText.trim() ? curText : all));
   let fallback = !!other || !found;   // молчание тоже → «статистический» прогноз
-  log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
+  log("final: " + (text.trim() || "(пусто)") + " | категория: " + cat.ru + (lastErr ? " | err " + lastErr : ""));
   let img = null;
   if (found) {
     const r = await resolveWord(lang === "ru" ? found[0] : found[1], !inCat);
