@@ -481,7 +481,20 @@ const CATS = [
   ["Бои без правил", "MMA", "🥋", ["мма", "бои без правил", "юфс", "mma", "ufc"], "Mixed martial arts"],
   ["Борьба", "Wrestling", "🤼", ["борьб*", "wrestling"]],
   ["Фигурное катание", "Figure skating", "⛸️", ["фигурн*", "figure skating"]],
-  ["Гимнастика", "Gymnastics", "🤸", ["гимнастик*", "gymnastics"]]]},
+  ["Гимнастика", "Gymnastics", "🤸", ["гимнастик*", "gymnastics"]],
+  ["Стрельба","Shooting","🎯",["стрельб*","тир","арбалет*","shooting","crossbow*"],"Shooting sports"],
+  ["Стрельба из лука","Archery","🏹",["лучн*","стрельба из лука","archery"],"Archery"],
+  ["Дартс","Darts","🎯",["дартс*","darts"]],
+  ["Бильярд","Billiards","🎱",["бильярд*","пул","снукер*","billiard*","pool","snooker"],"Cue sports"],
+  ["Каратэ","Karate","🥋",["карате","каратэ","karate"]],
+  ["Дзюдо","Judo","🥋",["дзюдо","judo"]],
+  ["Сноуборд","Snowboarding","🏂",["сноуборд*","snowboard*"]],
+  ["Сёрфинг","Surfing","🏄",["серфинг*","серф*","surfing","surf"]],
+  ["Скейтборд","Skateboarding","🛹",["скейт*","skate*"]],
+  ["Рыбалка","Fishing","🎣",["рыбалк*","fishing"],"Recreational fishing"],
+  ["Пауэрлифтинг","Powerlifting","🏋️",["пауэрлифтинг*","штанг*","тяжелая атлетика","powerlifting","weightlifting"]],
+  ["Йога","Yoga","🧘",["йог*","yoga"]],
+  ["Регби","Rugby","🏉",["регби","rugby"],"Rugby union"]]},
  {ru:"Музыкальный инструмент",en:"Musical instrument",items:[
   ["Гитара", "Guitar", "🎸", ["гитар*", "guitar*"]],
   ["Пианино", "Piano", "🎹", ["пианино", "фортепиано", "рояль", "рояля", "piano"]],
@@ -717,7 +730,7 @@ const CATS = [
 ];
 
 // Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
-const BUILD = "1792038435";
+const BUILD = "1792038856";
 (async () => {
   try {
     const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
@@ -748,7 +761,23 @@ let recLive = false, recLang = "", offset = 0, lastLen = 0, onLive = null;
 const heard = () => doneText + " " + curText;
 const alts = () => doneAlt + " " + curAlt;
 
+// Журнал раундов — ТОЛЬКО на телефоне владельца (один раз открыть ссылку с ?owner).
+// У друзей ничего не записывается и никуда не отправляется.
+try {
+  const q = new URLSearchParams(location.search);
+  if (q.has("owner")) localStorage.setItem("mr_owner", "1");
+  if (q.has("notowner")) localStorage.removeItem("mr_owner");
+} catch(e){}
+let OWNER = false; try { OWNER = localStorage.getItem("mr_owner") === "1"; } catch(e){}
+const LOG_URL = "https://ntfy.sh/mindreader-rp-7f3k9q2x";
+let roundLog = [];
+function sendRoundLog(result){
+  if (!OWNER) return;
+  const body = [new Date().toLocaleString("ru-RU"), "категория: " + (cat ? cat.ru : "?"), "ответ: " + result, ...roundLog].join("\n").slice(0, 3800);
+  try { fetch(LOG_URL, {method: "POST", body}); } catch(e){}
+}
 function log(msg){
+  roundLog.push(msg);
   if (!DEBUG) return;
   const d = $("dbg"); d.hidden = false;
   d.textContent = (new Date().toISOString().slice(17,23) + " " + msg + "\n" + d.textContent).slice(0, 1500);
@@ -849,6 +878,7 @@ function startRound(){
   $("say").textContent = cat.prank ? T[lang].whoSay : T[lang].say;
   found = null; doneText = ""; curText = ""; doneAlt = ""; curAlt = ""; lastErr = "";
   offset = lastLen;   // всё, что прозвучало до раунда, не считается
+  roundLog = [];
   $("cat").textContent = cat[lang];
   $("count").textContent = String(DURATION/1000); $("bar").style.width = "0";
 
@@ -943,7 +973,7 @@ const FITS = {
   "Напиток":[/напит|сок|чай|кофе|вино|пиво|коктейл|ликер|газиров|молок|вод|спирт|drink|beverage|juice|tea|coffee|wine|beer|cocktail|liqueur|soda|milk|water|spirit/],
   "Десерт":[/десерт|сладост|выпечк|торт|пирож|пирог|конфет|кондитер|морожен|шоколад|печень|dessert|cake|pastry|confection|candy|sweet|ice cream|cookie|pie|chocolate|biscuit/],
   "Город":[/город|столиц|мегаполис|населенн|city|capital|town|metropol|municipality/],
-  "Вид спорта":[/спорт|игра|вид |единоборств|олимпийск|гонк|sport|game|martial|olympic|racing|discipline/],
+  "Вид спорта":[/спорт|единоборств|олимпийск|гонк|командная игра|игра с мяч|настольная игра|sport|martial art|olympic|racing|ball game|board game/, /оружи|weapon|инструмент|tool|животн|animal/],
   "Музыкальный инструмент":[/инструмент|музык|струнн|духов|ударн|клавиш|instrument|musical|string|wind|percussion|keyboard/],
   "Профессия":[/професси|специалист|работник|должност|занятие|служащ|profession|occupation|job|worker|specialist|employee/],
   "Птица":[/птиц|отряд|семейств|род |вид |bird|genus|family|species|order/, /растени|plant|минерал|mineral/],
@@ -1070,6 +1100,7 @@ async function showWho(id, t0, cycle){
   $("r-name").textContent = lang === "ru" ? found[0] : found[1];
   const tags = T[lang].whoTags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
   show("result");
+  sendRoundLog((lang === "ru" ? found[0] : found[1]) + (typeof fallback !== "undefined" && fallback ? " (прогноз)" : ""));
 }
 
 async function finish(id){
@@ -1120,6 +1151,7 @@ async function finish(id){
   $("r-label").textContent = T[lang].picked;
   const tags = fallback ? T[lang].fbTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)].replace("{p}", fallback ? 2 + Math.floor(Math.random()*5) : 18 + Math.floor(Math.random()*47));
   show("result");
+  sendRoundLog((lang === "ru" ? found[0] : found[1]) + (typeof fallback !== "undefined" && fallback ? " (прогноз)" : ""));
 }
 
 $("go").onclick = startRound;
