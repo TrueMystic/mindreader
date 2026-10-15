@@ -35,6 +35,7 @@ h1{font-size:clamp(30px,8vw,40px)}
 .sub{color:var(--muted);font-size:19px;margin:0;line-height:1.4;white-space:pre-line}
 .big{font-size:96px;line-height:1}
 .huge{font-size:140px;line-height:1}
+.pic{width:min(78vw,300px);height:min(78vw,300px);object-fit:cover;border-radius:28px;box-shadow:0 20px 60px #ff3d8b40}
 .count{font-family:var(--display);font-size:120px;line-height:1;font-variant-numeric:tabular-nums}
 .bar{width:100%;height:12px;border-radius:6px;background:#ffffff1a;overflow:hidden}
 .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
@@ -83,6 +84,7 @@ h1{font-size:clamp(30px,8vw,40px)}
   <section class="screen" id="s-result" hidden>
     <p class="sub" id="r-label"></p>
     <div class="huge pop" id="r-emoji"></div>
+    <img class="pic pop" id="r-pic" alt="" hidden>
     <div class="title" id="r-name"></div>
     <p class="sub" id="r-tag"></p>
   </section>
@@ -381,28 +383,70 @@ function rawGuess(text){
   return [name, name, emoji, []];
 }
 
-function finish(id){
+// Поиск картинки в Википедии (без ключей, работает прямо из браузера)
+const HINT = {"Уличная еда":["блюдо","food"],"Марка машины":["автомобиль","car"],"Животное":["животное","animal"],
+  "Фрукт":["фрукт","fruit"],"Страна":["страна","country"],"Цветок":["цветок","flower"],"Цвет":["цвет","color"]};
+async function wikiSearch(q, host, signal){
+  const url = "https://" + host + ".wikipedia.org/w/api.php?action=query&format=json&origin=*" +
+    "&generator=search&gsrlimit=5&gsrsearch=" + encodeURIComponent(q) +
+    "&prop=pageimages&piprop=thumbnail&pithumbsize=640";
+  const r = await fetch(url, {signal});
+  const j = await r.json();
+  const pages = Object.values((j.query && j.query.pages) || {}).sort((x,y) => x.index - y.index);
+  return pages.filter(p => p.thumbnail && p.thumbnail.source);
+}
+async function lookupImage(word, useHint){
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4000);
+  const host = lang === "ru" ? "ru" : "en";
+  const stem = norm(word).replace(/[^\p{L}\p{N}]/gu,"").slice(0, 4);
+  const related = p => norm(p.title).replace(/[^\p{L}\p{N}]/gu,"").includes(stem);
+  try {
+    if (useHint && HINT[cat.ru]) {
+      const hits = await wikiSearch(word + " " + HINT[cat.ru][lang === "ru" ? 0 : 1], host, ctrl.signal);
+      const h = hits.find(related); if (h) return h.thumbnail.source;
+    }
+    const hits = await wikiSearch(word, host, ctrl.signal);
+    const h = hits.find(related) || hits[0];
+    return h ? h.thumbnail.source : null;
+  } catch(e) { log("wiki: " + e.name); return null; }
+  finally { clearTimeout(to); }
+}
+function loadImg(src){
+  return new Promise(res => { const i = new Image(); i.onload = () => res(src); i.onerror = () => res(null); i.src = src; setTimeout(() => res(null), 3000); });
+}
+
+async function finish(id){
   const text = heard();
   stopRec();
   show("think");
-  setTimeout(() => {
-    if (id !== runId) return;
-    const all = text + " " + curText;
-    // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
-    // незнакомое слово → просто показываем его
-    const inCat = match(cat, all);
-    const other = inCat ? null : matchAny(all);
-    found = inCat || other || rawGuess(curText.trim() ? curText : all);
-    log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
-    if (found) {
-      const em = $("r-emoji"); em.textContent = found[2];
-      em.classList.remove("pop"); void em.offsetWidth; em.classList.add("pop");
-      $("r-name").textContent = lang === "ru" ? found[0] : found[1];
-      $("r-label").textContent = other ? T[lang].off.replace("{c}", cat[lang]) : T[lang].picked;
-      const tags = other ? T[lang].offTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
-      show("result");
-    } else show("miss");
-  }, 1300);
+  const t0 = Date.now();
+  const all = text + " " + curText;
+  // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
+  // незнакомое слово → берём сказанное слово и ищем его картинку
+  const inCat = match(cat, all);
+  const other = inCat ? null : matchAny(all);
+  found = inCat || other || rawGuess(curText.trim() ? curText : all);
+  log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
+  let img = null;
+  if (found) {
+    const name = lang === "ru" ? found[0] : found[1];
+    const src = await lookupImage(name, !other);
+    if (src) img = await loadImg(src);
+    log("img: " + (img ? "ok" : "нет"));
+  }
+  const wait = 1300 - (Date.now() - t0);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  if (id !== runId) return;
+  if (!found) return show("miss");
+  const pic = $("r-pic"), em = $("r-emoji");
+  pic.hidden = !img; em.hidden = !!img;
+  if (img) pic.src = img; else em.textContent = found[2];
+  const box = img ? pic : em;
+  box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop");
+  $("r-name").textContent = lang === "ru" ? found[0] : found[1];
+  $("r-label").textContent = other ? T[lang].off.replace("{c}", cat[lang]) : T[lang].picked;
+  const tags = other ? T[lang].offTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
+  show("result");
 }
 
 $("go").onclick = startRound;
