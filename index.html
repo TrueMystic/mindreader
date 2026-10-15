@@ -499,7 +499,8 @@ async function commonsImage(name){
         .filter(p => p.imageinfo && /jpeg/.test(p.imageinfo[0].mime) && !/logo|map|karte|diagram|icon|emblem|plan|chart|drawing|sign|accident|crash|museum|factory|plant|headquarter|building|dealer|store|shop/i.test(p.title));
       // название должно быть в имени файла — иначе это случайное фото
       const key = name.toLowerCase().split(/[\s-]+/)[0];
-      pages = pages.filter(p => p.title.toLowerCase().includes(key));
+      pages = pages.filter(p => p.title.toLowerCase().includes(key) && !/rent|daito|office|station|garage|showroom|race|parade/i.test(p.title));
+      if (cat.ru === "Марка машины") pages = pages.filter(p => /(19|20)\d\d/.test(p.title));
     }
     const p = pages.find(p => p.imageinfo && p.imageinfo[0].thumburl);
     log("commons: " + (p ? p.title : "нет"));
@@ -507,7 +508,25 @@ async function commonsImage(name){
   } catch(e) { log("commons err: " + e.name); return null; }
   finally { clearTimeout(to); }
 }
+// Машины: фото конкретной модели из английской Википедии — там на главной картинке всегда сама машина
+const CAR_MODEL = {Toyota:"Toyota Camry",BMW:"BMW 3 Series",Mercedes:"Mercedes-Benz E-Class",Audi:"Audi A6",Volvo:"Volvo XC90",
+  Tesla:"Tesla Model 3",Ford:"Ford Mustang",Honda:"Honda Civic",Lada:"Lada Vesta",Porsche:"Porsche 911",Ferrari:"Ferrari F8",
+  Lamborghini:"Lamborghini Huracán",Chevrolet:"Chevrolet Camaro",Nissan:"Nissan GT-R",Hyundai:"Hyundai Tucson",Kia:"Kia Sportage",
+  Volkswagen:"Volkswagen Golf",Jeep:"Jeep Wrangler",Lexus:"Lexus RX"};
+async function enwikiImage(title){
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 3500);
+  try {
+    const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=640&titles=" + encodeURIComponent(title);
+    const p = Object.values(((await (await fetch(url, {signal: ctrl.signal})).json()).query || {}).pages || {})[0];
+    log("enwiki: " + title + (p && p.thumbnail ? " ok" : " нет"));
+    return p && p.thumbnail ? p.thumbnail.source : null;
+  } catch(e) { return null; } finally { clearTimeout(to); }
+}
 async function bestImage(r, enName){
+  if (cat.ru === "Марка машины" && CAR_MODEL[enName]) {
+    const m = await enwikiImage(CAR_MODEL[enName]);
+    const ok = m && await loadImg(m); if (ok) return ok;
+  }
   const c = await commonsImage(enName || r.en);
   return (c && await loadImg(c)) || (r.img && await loadImg(r.img)) || null;
 }
