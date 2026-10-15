@@ -128,6 +128,31 @@ def year_of(e, p):
             try: return int(t[:t.index("-", 1)])
             except Exception: pass
     return None
+def height_cm(e):
+    for v in claims(e, "P2048"):
+        try:
+            a = float(v["amount"]); u = v.get("unit", "")
+            if u.endswith("Q174728"): return round(a)
+            if u.endswith("Q11573"): return round(a * 100)
+        except Exception: pass
+    return None
+def max_amount(e, p):
+    best = None
+    for v in claims(e, p):
+        try: a = float(v["amount"]); best = a if best is None else max(best, a)
+        except Exception: pass
+    return best
+AWARDS = [("oscar", ["academy award"]), ("grammy", ["grammy"]), ("nobel", ["nobel prize"]), ("ballon", ["ballon d'or"]),
+          ("globe", ["golden globe"]), ("emmy", ["emmy award"]), ("hero", ["hero of the soviet union", "hero of the russian federation", "hero of socialist labour"]),
+          ("knight", ["knight", "order of the british empire", "dame"])]
+HAIR = [("blond", ["blond", "fair"]), ("red", ["red hair", "ginger", "auburn"]), ("bald", ["bald"]), ("grey", ["grey", "gray", "white hair"]), ("dark", ["black", "brown", "dark"])]
+EYES = [("blue", ["blue", "grey", "gray"]), ("green", ["green", "hazel"]), ("brown", ["brown", "black", "dark"])]
+def pick(labels, table):
+    for lb in labels:
+        l = lb.lower()
+        for code, kws in table:
+            if any(k in l for k in kws): return code
+    return None
 def amount(e, p):
     for v in claims(e, p):
         try: return float(v["amount"])
@@ -217,7 +242,7 @@ def trim(people, places):
     for p in people:
         p["d"] = (p.get("d") or "")[:70]
         if p.get("e") == p.get("n"): p.pop("e", None)
-        for k in ("o2", "c"):
+        for k in ("o2", "c", "aw", "tm"):
             if not p.get(k): p.pop(k, None)
         p.pop("id", None)
     skip = {"airport", "station"}
@@ -271,6 +296,8 @@ def main():
     aux_ids = set()
     for e in pe.values():
         aux_ids.update(ids_of(e, "P106")); aux_ids.update(ids_of(e, "P27"))
+        for pp in ("P166", "P1884", "P1340", "P1344"): aux_ids.update(ids_of(e, pp))
+        aux_ids.update(ids_ranked(e, "P54")[:6])
     for e in pl.values():
         aux_ids.update(ids_of(e, "P31")); aux_ids.update(ids_of(e, "P17"))
     log("fetching aux labels:", len(aux_ids))
@@ -286,6 +313,7 @@ def main():
         return cid
 
     out_people = []
+    teams = {}
     for k, e in pe.items():
         if "missing" in e: continue
         ru, en = lab(e, "ru"), lab(e, "en")
@@ -297,12 +325,36 @@ def main():
         occ2 = [x for x in occ_groups([lab(aux.get(o, {}), "en") for o in occ_ids[2:]]) if x not in occ]
         cs = [c for c in (country(c) for c in ids_of(e, "P27")) if c]
         img = claims(e, "P18")
-        out_people.append({
+        rec = {
             "id": k, "n": ru or en, "e": en or ru, "d": (desc(e, "ru") or desc(e, "en"))[:90],
             "i": img[0] if img else None, "s": len(e.get("sitelinks", {})) or people.get(k, 0),
             "g": gender, "b": year_of(e, "P569"), "dd": year_of(e, "P570"),
             "c": cs[:3], "o": occ, "o2": occ2,
-        })
+        }
+        # «неожиданные» признаки для вопросов в стиле Акинатора
+        aw = sorted({c for c in (pick([lab(aux.get(a, {}), "en")], AWARDS) for a in ids_of(e, "P166")) if c})
+        if any("olympic" in lab(aux.get(x, {}), "en").lower() for x in ids_of(e, "P1344")): aw.append("olympic")
+        if aw: rec["aw"] = aw
+        sp = len(ids_of(e, "P26"))
+        if sp: rec["sp"] = sp
+        ch = max_amount(e, "P1971") or len(ids_of(e, "P40"))
+        if ch: rec["ch"] = int(ch)
+        if "Q789447" in ids_of(e, "P552"): rec["lh"] = 1
+        elif ids_of(e, "P552"): rec["lh"] = 0
+        hr = pick([lab(aux.get(x, {}), "en") for x in ids_of(e, "P1884")], HAIR)
+        if hr: rec["hr"] = hr
+        ey = pick([lab(aux.get(x, {}), "en") for x in ids_of(e, "P1340")], EYES)
+        if ey: rec["ey"] = ey
+        h = height_cm(e)
+        if h and 120 < h < 240: rec["h"] = h
+        fol = max_amount(e, "P8687")
+        if fol: rec["fol"] = round(fol / 1e6, 1)
+        if "P2003" in e.get("claims", {}): rec["ig"] = 1
+        tm = [t for t in ids_ranked(e, "P54")[:6] if t in aux]
+        if tm:
+            rec["tm"] = tm
+            for t in tm: teams[t] = lab(aux[t], "ru") or lab(aux[t], "en")
+        out_people.append(rec)
 
     out_places = []
     for k, e in pl.items():
@@ -326,7 +378,7 @@ def main():
     continents = {k: {"ru": lab(v, "ru"), "en": lab(v, "en")} for k, v in ce.items()}
 
     out_people, out_places = trim(out_people, out_places)
-    meta = {"countries": countries, "continents": continents}
+    meta = {"countries": countries, "continents": continents, "teams": teams}
     for name, obj in [("people", out_people), ("places", out_places), ("meta", meta)]:
         with open(f"data/{name}.json", "w", encoding="utf-8") as f:
             json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
