@@ -61,6 +61,21 @@ h1{font-size:clamp(36px,10vw,48px)}
 .c-check input{width:22px;height:22px;accent-color:var(--accent)}
 .consent .btn{margin-bottom:16px}
 .btn:disabled{opacity:.4;cursor:default}
+.btn.alt{background:transparent;border:2px solid #ffffff3a;margin-top:-12px}
+.menu{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));background:#ffffff14;color:var(--fg);border:1px solid #ffffff26;border-radius:12px;padding:8px 14px;font:600 16px var(--body);cursor:pointer;z-index:5}
+.choices{display:flex;flex-direction:column;gap:14px;width:100%}
+.choice{display:flex;align-items:center;gap:16px;width:100%;padding:18px 20px;border-radius:20px;border:2px solid #ffffff2e;background:#ffffff0d;color:var(--fg);cursor:pointer;text-align:left}
+.choice span{font-size:44px;line-height:1}
+.choice b{font:400 24px var(--display)}
+.title.q{font-size:clamp(32px,9vw,42px);min-height:3.4em;display:flex;align-items:center;justify-content:center}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.answers.two{grid-template-columns:1fr 1fr}
+.ans{border:0;border-radius:18px;padding:18px 10px;font:400 22px var(--display);color:#fff;cursor:pointer;background:#ffffff1a}
+.ans.yes{background:linear-gradient(90deg,#1fbf75,#16a36a)}
+.ans.no{background:linear-gradient(90deg,#ff3d6e,#d92f5a)}
+.ans.dk{grid-column:1/-1}
+.ans:active,.choice:active{transform:scale(.97)}
+.sub.small{font-size:18px;font-weight:400}
 .spin{width:56px;height:56px;border-radius:50%;border:5px solid #ffffff2a;border-top-color:var(--accent);animation:s .8s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
 .pop{animation:p .45s cubic-bezier(.2,1.6,.4,1)}
@@ -110,6 +125,52 @@ h1{font-size:clamp(36px,10vw,48px)}
     <p class="sub" data-t="intro2"></p>
   </section>
 
+  <section class="screen" id="s-g2pick" hidden>
+    <div class="big">🕵️</div>
+    <div class="title" style="font-size:clamp(34px,10vw,44px)" data-t="g2title"></div>
+    <p class="sub" data-t="g2pick"></p>
+    <div class="choices">
+      <button class="choice" id="g2-people" type="button"><span>🧑‍🎤</span><b data-t="g2people"></b></button>
+      <button class="choice" id="g2-places" type="button"><span>🏛️</span><b data-t="g2places"></b></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-g2load" hidden>
+    <div class="spin"></div>
+    <div class="title" style="font-size:30px" data-t="g2load"></div>
+  </section>
+
+  <section class="screen" id="s-g2q" hidden>
+    <p class="sub" id="g2-num"></p>
+    <div class="title q" id="g2-text"></div>
+    <div class="answers">
+      <button class="ans yes" data-a="1" type="button" data-t="aYes"></button>
+      <button class="ans no" data-a="0" type="button" data-t="aNo"></button>
+      <button class="ans soft" data-a="0.75" type="button" data-t="aProb"></button>
+      <button class="ans soft" data-a="0.25" type="button" data-t="aProbNot"></button>
+      <button class="ans dk" data-a="0.5" type="button" data-t="aDk"></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-g2guess" hidden>
+    <p class="sub" data-t="g2is"></p>
+    <img class="pic pop" id="g2-pic" alt="" hidden>
+    <div class="huge" id="g2-emoji" hidden>🧠</div>
+    <div class="title" id="g2-name"></div>
+    <p class="sub small" id="g2-desc"></p>
+    <div class="answers two">
+      <button class="ans yes" id="g2-right" type="button" data-t="g2right"></button>
+      <button class="ans no" id="g2-wrong" type="button" data-t="g2wrong"></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-g2end" hidden>
+    <div class="big" id="g2-endemoji">😎</div>
+    <div class="title" id="g2-endtitle"></div>
+    <p class="sub" id="g2-endsub"></p>
+    <button class="btn" id="g2-again" type="button" data-t="again"></button>
+  </section>
+
   <section class="screen" id="s-listen" hidden>
     <div class="title" id="cat"></div>
     <p class="sub" id="say" data-t="say"></p>
@@ -143,6 +204,8 @@ h1{font-size:clamp(36px,10vw,48px)}
   </section>
 
   <button class="btn" id="go" type="button"></button>
+  <button class="btn alt" id="go2" type="button" hidden></button>
+  <button class="menu" id="menu" type="button" hidden data-t="menu"></button>
   <pre id="dbg" hidden></pre>
 </div>
 
@@ -156,6 +219,12 @@ const T = {
       denied:"Нужен доступ к микрофону",denied2:"Разреши доступ в настройках браузера для этого сайта и нажми «Ещё раз».",
       off:"Не из категории «{c}»?\nХитро. Но я и это предвидел:",
       offTags:["Так пытаются запутать 1 из 9 людей.","Нестандартно. Но не для меня.","Предсказуемо непредсказуемый."],
+      g1start:"🔮 Предсказатель", g2start:"🕵️ Угадаю, кого ты загадал", menu:"← Меню",
+      g2title:"Загадай кого-нибудь", g2pick:"Я буду задавать вопросы и угадаю.\nКого загадаешь?", g2people:"Известного человека", g2places:"Знаменитое место",
+      g2load:"Загружаю базу знаний…", aYes:"Да", aNo:"Нет", aProb:"Скорее да", aProbNot:"Скорее нет", aDk:"Не знаю",
+      g2num:"Вопрос {n}", g2is:"Я думаю, это…", g2right:"Да! 😮", g2wrong:"Нет",
+      g2winT:"Я так и знал 😎", g2winS:"Угадал за {n} вопросов. Люди предсказуемы.",
+      g2loseT:"Ты победил 🤯", g2loseS:"Такого я не знаю. Пока что.", g2err:"Не удалось загрузить базу. Проверь интернет.",
       whoSay:"Представься.\nХотя я и так знаю.", whoTags:["Узнал по стилю мышления.","Дальнобойщика видно сразу.","Сто процентов. Даже считать не пришлось."],
       fbTags:["Не совпало? Значит, ты в {p}% непредсказуемых. Редкость.","Если мимо — ты сломал мою статистику. Ещё раз?"],
       tags:["Так отвечают {p}% людей.","Совпадение с прогнозом: {p}%.","Твой ответ в топе статистики.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Предсказуемо."]},
@@ -167,6 +236,12 @@ const T = {
       denied:"Microphone access needed",denied2:"Allow access for this site in browser settings, then tap Again.",
       off:"Not a {c}?\nSneaky. I saw that coming too:",
       offTags:["1 in 9 people try to trick me.","Unusual. Not for me.","Predictably unpredictable."],
+      g1start:"🔮 The Predictor", g2start:"🕵️ I'll guess who you're thinking of", menu:"← Menu",
+      g2title:"Think of someone", g2pick:"I'll ask questions and guess.\nWhat will it be?", g2people:"A famous person", g2places:"A famous place",
+      g2load:"Loading knowledge base…", aYes:"Yes", aNo:"No", aProb:"Probably", aProbNot:"Probably not", aDk:"Don't know",
+      g2num:"Question {n}", g2is:"I think it's…", g2right:"Yes! 😮", g2wrong:"No",
+      g2winT:"Knew it 😎", g2winS:"Guessed in {n} questions. Humans are predictable.",
+      g2loseT:"You win 🤯", g2loseS:"I don't know that one. Yet.", g2err:"Couldn't load the data. Check your connection.",
       whoSay:"Introduce yourself.\nThough I already know.", whoTags:["Recognized your way of thinking.","A trucker is easy to spot.","100%. Didn't even need to calculate."],
       fbTags:["Missed? Then you're in the {p}% of unpredictable people. Rare.","If I missed, you broke my statistics. Again?"],
       tags:["{p}% of people answer this.","Prediction match: {p}%.","Your answer is a top statistic.","I knew before I asked.","Humans are algorithms.","Predictable."]}
@@ -805,10 +880,14 @@ function match(category, text){
 
 function show(p){
   phase = p;
-  for (const s of ["consent","intro","listen","think","result","miss","err"]) $("s-"+s).hidden = s !== p;
+  for (const s of ["consent","intro","listen","think","result","miss","err","g2pick","g2load","g2q","g2guess","g2end"]) $("s-"+s).hidden = s !== p;
+  $("go2").hidden = p !== "intro";
+  $("go2").textContent = T[lang].g2start;
+  $("menu").hidden = ["intro","consent","listen","think","g2load"].includes(p);
   $("langbar").style.visibility = p === "intro" ? "visible" : "hidden";
-  $("go").hidden = p === "listen" || p === "think" || p === "consent";
+  $("go").hidden = p === "listen" || p === "think" || p === "consent" || p.startsWith("g2");
   $("go").textContent = T[lang][p === "intro" ? "start" : "again"];
+  if (p === "intro") $("go").textContent = T[lang].g1start;
 }
 function applyLang(){
   document.documentElement.lang = lang;
@@ -1153,6 +1232,166 @@ async function finish(id){
   show("result");
   sendRoundLog((lang === "ru" ? found[0] : found[1]) + (typeof fallback !== "undefined" && fallback ? " (прогноз)" : ""));
 }
+
+// ═════════════ Игра 2: «Угадаю, кого ты загадал» (вопросы да/нет, база Wikidata) ═════════════
+const G2 = {kind: null, items: [], meta: null, w: [], asked: new Set(), n: 0, guesses: 0, rejected: new Set(), q: null, hist: [], cache: {}};
+const CONT_RU = {Q46:"Европы",Q48:"Азии",Q49:"Северной Америки",Q18:"Южной Америки",Q15:"Африки",Q538:"Океании",Q55643:"Океании",Q3960:"Австралии",Q51:"Антарктиды"};
+const CONT_EN = {Q46:"Europe",Q48:"Asia",Q49:"North America",Q18:"South America",Q15:"Africa",Q538:"Oceania",Q55643:"Oceania",Q3960:"Australia",Q51:"Antarctica"};
+const OCC_Q = {
+  actor:["Это актёр или актриса?","Is this an actor or actress?"], singer:["Это певец или певица?","Is this a singer?"],
+  rapper:["Это рэпер?","Is this a rapper?"], musician:["Этот человек связан с музыкой?","Is this person connected to music?"],
+  director:["Это режиссёр или продюсер кино?","Is this a film director or producer?"], football:["Это футболист?","Is this a soccer player?"],
+  basketball:["Это баскетболист?","Is this a basketball player?"], tennis:["Это теннисист?","Is this a tennis player?"],
+  hockey:["Это хоккеист?","Is this a hockey player?"], boxer:["Это боксёр?","Is this a boxer?"], fighter:["Это боец (ММА, борьба, единоборства)?","Is this a fighter (MMA, wrestling, martial arts)?"],
+  racer:["Это автогонщик?","Is this a racing driver?"], chess:["Это шахматист?","Is this a chess player?"], athlete:["Это спортсмен?","Is this an athlete?"],
+  politician:["Это политик?","Is this a politician?"], monarch:["Это монарх — король, царь, император?","Is this a monarch — king, queen, emperor?"],
+  military:["Это военный или полководец?","Is this a military figure?"], scientist:["Это учёный или изобретатель?","Is this a scientist or inventor?"],
+  writer:["Это писатель, поэт или журналист?","Is this a writer, poet or journalist?"], business:["Это бизнесмен или предприниматель?","Is this a businessperson?"],
+  blogger:["Это блогер или ютубер?","Is this a blogger or YouTuber?"], tv:["Это телеведущий или комик?","Is this a TV host or comedian?"],
+  model:["Это модель?","Is this a model?"], artist:["Это художник, скульптор или архитектор?","Is this a painter, sculptor or architect?"],
+  philosopher:["Это философ?","Is this a philosopher?"], religious:["Это религиозный деятель?","Is this a religious figure?"],
+  cosmonaut:["Это космонавт или астронавт?","Is this an astronaut?"], dancer:["Это танцор или балерина?","Is this a dancer?"]
+};
+const PLACE_Q = {
+  tower:["Это башня?","Is it a tower?"], bridge:["Это мост?","Is it a bridge?"], skyscraper:["Это небоскрёб?","Is it a skyscraper?"],
+  church:["Это церковь или собор?","Is it a church or cathedral?"], mosque:["Это мечеть?","Is it a mosque?"], temple:["Это храм (не христианский)?","Is it a temple (non-Christian)?"],
+  religious:["Это религиозное сооружение?","Is it a religious building?"], palace:["Это дворец?","Is it a palace?"], castle:["Это замок, крепость или кремль?","Is it a castle or fortress?"],
+  stadium:["Это стадион или арена?","Is it a stadium or arena?"], museum:["Это музей?","Is it a museum?"], statue:["Это памятник или статуя?","Is it a monument or statue?"],
+  pyramid:["Это пирамида?","Is it a pyramid?"], theatre:["Это театр или концертный зал?","Is it a theatre or concert hall?"], dam:["Это плотина?","Is it a dam?"],
+  wall:["Это стена?","Is it a wall?"], square:["Это площадь?","Is it a square?"], park:["Это парк или сад?","Is it a park or garden?"], ruins:["Это древние руины?","Is it ancient ruins?"],
+  lighthouse:["Это маяк?","Is it a lighthouse?"], airport:["Это аэропорт?","Is it an airport?"], station:["Это вокзал или станция?","Is it a station?"],
+  tomb:["Это гробница или мавзолей?","Is it a tomb or mausoleum?"], hotel:["Это отель или казино?","Is it a hotel or casino?"], government:["Здесь заседает власть — парламент, правительство?","Is it a seat of government?"]
+};
+
+function g2Questions(){
+  const L = lang === "ru" ? 0 : 1, qs = [], items = G2.items, meta = G2.meta;
+  const countryName = c => (meta.countries[c] || {})[lang === "ru" ? "ru" : "en"] || c;
+  const contOf = it => { const c = it.c && it.c[0]; return c && meta.countries[c] ? meta.countries[c].ct : null; };
+  // страны и континенты, встречающиеся у живых кандидатов
+  const cnt = {}, conts = {};
+  items.forEach((it, i) => { if (!G2.w[i]) return; (it.c || []).forEach(c => cnt[c] = (cnt[c] || 0) + G2.w[i]); const k = contOf(it); if (k) conts[k] = 1; });
+  const topC = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+  Object.keys(conts).forEach(k => { if (CONT_RU[k]) qs.push({id: "ct:" + k, t: L ? `Is it from ${CONT_EN[k]}?` : (G2.kind === "people" ? `Этот человек из ${CONT_RU[k]}?` : `Это находится в ${CONT_RU[k].replace(/ы$/,"е").replace(/и$/,"и")}?`), f: it => { const x = contOf(it); return x == null ? null : x === k; }}); });
+  topC.forEach(c => qs.push({id: "c:" + c, t: L ? `Is it connected to ${countryName(c)}?` : (G2.kind === "people" ? `Страна этого человека — ${countryName(c)}?` : `Это в стране ${countryName(c)}?`), f: it => it.c && it.c.length ? it.c.includes(c) : null}));
+  if (G2.kind === "people") {
+    qs.push({id: "male", t: L ? "Is it a man?" : "Это мужчина?", f: it => it.g ? it.g === "m" : null});
+    qs.push({id: "alive", t: L ? "Is this person alive?" : "Этот человек жив?", f: it => it.dd ? false : (it.b ? it.b > 1915 : null)});
+    [1800, 1900, 1940, 1960, 1975, 1985, 1995].forEach(y => qs.push({id: "b" + y, t: L ? `Born after ${y}?` : `Родился(-ась) после ${y} года?`, f: it => it.b == null ? null : it.b > y}));
+    qs.push({id: "world", t: L ? "Is this person known all over the world?" : "Этого человека знают во всём мире?", f: it => it.s >= 110});
+    Object.keys(OCC_Q).forEach(o => qs.push({id: "o:" + o, t: OCC_Q[o][L], f: it => it.o.includes(o)}));
+  } else {
+    Object.keys(PLACE_Q).forEach(t => qs.push({id: "t:" + t, t: PLACE_Q[t][L], f: it => it.t.includes(t)}));
+    [0, 1000, 1500, 1800, 1900, 1950, 1990].forEach(y => qs.push({id: "y" + y, t: L ? `Built after ${y}?` : (y === 0 ? "Это построено в нашей эре (после 0 года)?" : `Это построено после ${y} года?`), f: it => it.y == null ? null : it.y > y}));
+    [50, 100, 200, 300].forEach(h => qs.push({id: "h" + h, t: L ? `Is it taller than ${h} m?` : `Высота больше ${h} метров?`, f: it => it.h == null ? null : it.h > h}));
+    qs.push({id: "world", t: L ? "Is it known all over the world?" : "Это место знают во всём мире?", f: it => it.s >= 90});
+  }
+  return qs;
+}
+
+function g2Pick(){
+  const qs = g2Questions().filter(q => !G2.asked.has(q.id));
+  const total = G2.w.reduce((a, b) => a + b, 0);
+  let best = null, bestScore = -1;
+  for (const q of qs) {
+    let yes = 0, known = 0;
+    for (let i = 0; i < G2.items.length; i++) {
+      const w = G2.w[i]; if (!w) continue;
+      const v = q.f(G2.items[i]); if (v == null) continue;
+      known += w; if (v) yes += w;
+    }
+    if (!known) continue;
+    const p = yes / known, cov = known / total;
+    const score = cov * (1 - Math.abs(2 * p - 1)) * (0.9 + Math.random() * 0.2);
+    if (score > bestScore) { bestScore = score; best = q; }
+  }
+  return bestScore > 0.02 ? best : null;
+}
+
+function g2Answer(a){
+  const q = G2.q; if (!q) return;
+  G2.asked.add(q.id); G2.hist.push(q.t + " → " + a);
+  for (let i = 0; i < G2.items.length; i++) {
+    if (!G2.w[i]) continue;
+    const v = q.f(G2.items[i]);
+    const L = v == null ? 0.5 : 0.04 + 0.92 * (v ? a : 1 - a);
+    G2.w[i] *= L;
+  }
+  g2Next();
+}
+
+function g2Top(){
+  let a = -1, b = -1, sum = 0;
+  G2.w.forEach((w, i) => { sum += w; if (a < 0 || w > G2.w[a]) { b = a; a = i; } else if (b < 0 || w > G2.w[b]) b = i; });
+  return {a, b, pa: sum ? G2.w[a] / sum : 0, ratio: b >= 0 && G2.w[b] ? G2.w[a] / G2.w[b] : 99};
+}
+
+function g2Next(){
+  G2.n++;
+  const top = g2Top();
+  const ready = (G2.n > 6 && (top.pa > 0.55 || top.ratio > 6)) || G2.n > 22;
+  const q = ready ? null : g2Pick();
+  if (!q || G2.n > 30) return g2Guess(top.a);
+  G2.q = q;
+  $("g2-num").textContent = T[lang].g2num.replace("{n}", G2.n);
+  $("g2-text").textContent = q.t;
+  show("g2q");
+}
+
+function g2Img(it){ return it.i ? "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(it.i) + "?width=500" : null; }
+
+function g2Guess(i){
+  if (i < 0 || !G2.w[i]) return g2End(false);
+  G2.guesses++; G2.cur = i;
+  const it = G2.items[i];
+  $("g2-name").textContent = lang === "ru" ? it.n : it.e;
+  $("g2-desc").textContent = it.d || "";
+  const src = g2Img(it), pic = $("g2-pic"), em = $("g2-emoji");
+  pic.hidden = !src; em.hidden = !!src;
+  if (src) { pic.src = src; pic.onerror = () => { pic.hidden = true; em.hidden = false; }; }
+  pic.classList.remove("pop"); void pic.offsetWidth; pic.classList.add("pop");
+  show("g2guess");
+}
+
+function g2End(win){
+  const it = win ? G2.items[G2.cur] : null;
+  $("g2-endemoji").textContent = win ? "😎" : "🤯";
+  $("g2-endtitle").textContent = T[lang][win ? "g2winT" : "g2loseT"];
+  $("g2-endsub").textContent = T[lang][win ? "g2winS" : "g2loseS"].replace("{n}", G2.n);
+  show("g2end");
+  if (OWNER) {
+    const body = ["ИГРА 2 (" + G2.kind + "): " + (win ? "угадал " + it.n : "не угадал"), ...G2.hist].join("\n").slice(0, 3800);
+    try { fetch(LOG_URL, {method: "POST", body}); } catch(e){}
+  }
+}
+
+async function g2Start(kind){
+  G2.kind = kind; show("g2load");
+  try {
+    if (!G2.cache[kind]) {
+      const v = "?b=" + BUILD;
+      const [items, meta] = await Promise.all([fetch("data/" + kind + ".json" + v).then(r => r.json()), G2.meta || fetch("data/meta.json" + v).then(r => r.json())]);
+      G2.cache[kind] = items; G2.meta = meta;
+    }
+  } catch(e) { $("g2-endemoji").textContent = "📡"; $("g2-endtitle").textContent = ""; $("g2-endsub").textContent = T[lang].g2err; return show("g2end"); }
+  G2.items = G2.cache[kind];
+  G2.w = G2.items.map(it => Math.pow(it.s || 10, 1.3));   // известные — вероятнее
+  G2.asked = new Set(); G2.n = 0; G2.guesses = 0; G2.hist = []; G2.q = null;
+  g2Next();
+}
+
+$("go2").onclick = () => show("g2pick");
+$("g2-people").onclick = () => g2Start("people");
+$("g2-places").onclick = () => g2Start("places");
+document.querySelectorAll("#s-g2q .ans").forEach(b => b.onclick = () => g2Answer(parseFloat(b.dataset.a)));
+$("g2-right").onclick = () => { G2.hist.push("угадал: " + G2.items[G2.cur].n); g2End(true); };
+$("g2-wrong").onclick = () => {
+  G2.hist.push("не то: " + G2.items[G2.cur].n);
+  G2.w[G2.cur] = 0;
+  if (G2.guesses >= 3) return g2End(false);
+  G2.n = Math.max(G2.n, 8) - 1; g2Next();
+};
+$("g2-again").onclick = () => show("g2pick");
+$("menu").onclick = () => { runId++; show("intro"); };
 
 $("go").onclick = startRound;
 // Соглашение: микрофон запрашивается один раз — сразу после «Accept»
