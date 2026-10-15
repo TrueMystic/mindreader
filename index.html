@@ -81,7 +81,7 @@ h1{font-size:clamp(30px,8vw,40px)}
   </section>
 
   <section class="screen" id="s-result" hidden>
-    <p class="sub" data-t="picked"></p>
+    <p class="sub" id="r-label"></p>
     <div class="huge pop" id="r-emoji"></div>
     <div class="title" id="r-name"></div>
     <p class="sub" id="r-tag"></p>
@@ -110,12 +110,14 @@ const T = {
       miss:"Хм. Нестандартно мыслишь.",miss2:"Или промолчал. Давай ещё раз — громче.",
       noApi:"Этот браузер не подходит",noApi2:"Открой ссылку в Safari на iPhone или в Chrome.",
       denied:"Нужен микрофон",denied2:"Разреши доступ к микрофону в настройках браузера для этого сайта и нажми «Ещё раз».",
+      off:"Это не «{c}».\nХотел меня запутать? Но я всё равно знаю:",offTags:["Не выйдет.","Хитро. Но не хитрее меня.","Читер. Но предсказуемый."],
       tags:["Слишком просто.","Как и 7 из 10 людей.","Предсказуемо.","Я знал это ещё до вопроса.","Люди — это алгоритмы.","Даже не напрягся."]},
   en:{intro:"I'm an AI.\nHumans are predictable.",intro2:"I'll prove it in 6 seconds.",start:"Test me",again:"Again",
       say:"First thing that comes to mind.\nOut loud. Fast!",think:"Analyzing…",picked:"You picked:",
       miss:"Hmm. You're unusual.",miss2:"Or you stayed quiet. Again — louder.",
       noApi:"This browser won't work",noApi2:"Open the link in Safari on iPhone or in Chrome.",
       denied:"Microphone needed",denied2:"Allow microphone access for this site in browser settings, then tap Again.",
+      off:"That's not a {c}.\nTrying to trick me? I still know:",offTags:["Nice try.","Sneaky. Still predictable.","Cheater. Predictable cheater."],
       tags:["Too easy.","Just like 7 out of 10 people.","Predictable.","I knew before I asked.","Humans are algorithms.","Didn't even try."]}
 };
 
@@ -386,13 +388,18 @@ function finish(id){
   setTimeout(() => {
     if (id !== runId) return;
     const all = text + " " + curText;
-    found = found || matchAny(all) || rawGuess(curText.trim() ? curText : all);
+    // В категории → обычный ответ; известное слово из другой категории → «это не из категории»;
+    // незнакомое слово → просто показываем его
+    const inCat = match(cat, all);
+    const other = inCat ? null : matchAny(all);
+    found = inCat || other || rawGuess(curText.trim() ? curText : all);
     log("final: " + (text.trim() || "(пусто)") + (lastErr ? " | err " + lastErr : ""));
     if (found) {
       const em = $("r-emoji"); em.textContent = found[2];
       em.classList.remove("pop"); void em.offsetWidth; em.classList.add("pop");
       $("r-name").textContent = lang === "ru" ? found[0] : found[1];
-      const tags = T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
+      $("r-label").textContent = other ? T[lang].off.replace("{c}", cat[lang]) : T[lang].picked;
+      const tags = other ? T[lang].offTags : T[lang].tags; $("r-tag").textContent = tags[Math.floor(Math.random()*tags.length)];
       show("result");
     } else show("miss");
   }, 1300);
