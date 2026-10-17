@@ -76,6 +76,7 @@ h1{font-size:clamp(36px,10vw,48px)}
 .ans.dk{grid-column:1/-1}
 .ans:active,.choice:active{transform:scale(.97)}
 .sub.small{font-size:18px;font-weight:400}
+.undo{background:none;border:0;color:var(--muted);font:600 18px var(--body);padding:8px 16px;cursor:pointer;margin-top:4px}
 .spin{width:56px;height:56px;border-radius:50%;border:5px solid #ffffff2a;border-top-color:var(--accent);animation:s .8s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
 .pop{animation:p .45s cubic-bezier(.2,1.6,.4,1)}
@@ -132,6 +133,7 @@ h1{font-size:clamp(36px,10vw,48px)}
     <div class="choices">
       <button class="choice" id="g2-people" type="button"><span>🧑‍🎤</span><b data-t="g2people"></b></button>
       <button class="choice" id="g2-places" type="button"><span>🏛️</span><b data-t="g2places"></b></button>
+      <button class="choice" id="g2-things" type="button"><span>🧸</span><b data-t="g2things"></b></button>
     </div>
   </section>
 
@@ -150,6 +152,7 @@ h1{font-size:clamp(36px,10vw,48px)}
       <button class="ans soft" data-a="0.25" type="button" data-t="aProbNot"></button>
       <button class="ans dk" data-a="0.5" type="button" data-t="aDk"></button>
     </div>
+    <button class="undo" id="g2-undo" type="button" hidden data-t="undo"></button>
   </section>
 
   <section class="screen" id="s-g2guess" hidden>
@@ -168,6 +171,8 @@ h1{font-size:clamp(36px,10vw,48px)}
     <div class="big" id="g2-endemoji">😎</div>
     <div class="title" id="g2-endtitle"></div>
     <p class="sub" id="g2-endsub"></p>
+    <button class="btn" id="g2-cont" type="button" hidden data-t="g2cont"></button>
+    <button class="btn alt" id="g2-giveup" type="button" hidden data-t="g2giveup"></button>
     <button class="btn" id="g2-again" type="button" data-t="again"></button>
   </section>
 
@@ -220,7 +225,8 @@ const T = {
       off:"Не из категории «{c}»?\nХитро. Но я и это предвидел:",
       offTags:["Так пытаются запутать 1 из 9 людей.","Нестандартно. Но не для меня.","Предсказуемо непредсказуемый."],
       g1start:"🔮 Предсказатель", g2start:"🕵️ Угадаю, кого ты загадал", menu:"← Меню",
-      g2title:"Загадай кого-нибудь", g2pick:"Я буду задавать вопросы и угадаю.\nКого загадаешь?", g2people:"Известного человека", g2places:"Знаменитое место",
+      g2title:"Загадай кого-нибудь", g2pick:"Я буду задавать вопросы и угадаю.\nКого загадаешь?", g2people:"Известного человека", g2places:"Знаменитое место", g2things:"Предмет или вещь",
+      undo:"↩ Назад", g2cont:"Продолжить", g2giveup:"Сдаюсь", g2contT:"Хм, ты меня запутал", g2contS:"Задам ещё несколько вопросов — продолжим?",
       g2load:"Загружаю базу знаний…", aYes:"Да", aNo:"Нет", aProb:"Скорее да", aProbNot:"Скорее нет", aDk:"Не знаю",
       g2num:"Вопрос {n}", g2is:"Я думаю, это…", g2right:"Да! 😮", g2wrong:"Нет",
       g2winT:"Я так и знал 😎", g2winS:"Угадал за {n} вопросов. Люди предсказуемы.",
@@ -237,7 +243,8 @@ const T = {
       off:"Not a {c}?\nSneaky. I saw that coming too:",
       offTags:["1 in 9 people try to trick me.","Unusual. Not for me.","Predictably unpredictable."],
       g1start:"🔮 The Predictor", g2start:"🕵️ I'll guess who you're thinking of", menu:"← Menu",
-      g2title:"Think of someone", g2pick:"I'll ask questions and guess.\nWhat will it be?", g2people:"A famous person", g2places:"A famous place",
+      g2title:"Think of someone", g2pick:"I'll ask questions and guess.\nWhat will it be?", g2people:"A famous person", g2places:"A famous place", g2things:"An object or thing",
+      undo:"↩ Back", g2cont:"Continue", g2giveup:"I give up", g2contT:"Hmm, you got me confused", g2contS:"I'll ask a few more questions — continue?",
       g2load:"Loading knowledge base…", aYes:"Yes", aNo:"No", aProb:"Probably", aProbNot:"Probably not", aDk:"Don't know",
       g2num:"Question {n}", g2is:"I think it's…", g2right:"Yes! 😮", g2wrong:"No",
       g2winT:"Knew it 😎", g2winS:"Guessed in {n} questions. Humans are predictable.",
@@ -805,7 +812,7 @@ const CATS = [
 ];
 
 // Автообновление: если на сайте уже новая версия, а телефон показал старую из кэша — тихо перезагружаем свежую
-const BUILD = "1792043953";
+const BUILD = "1792210238";
 (async () => {
   try {
     const html = await (await fetch(location.pathname, {cache: "no-store"})).text();
@@ -1293,11 +1300,67 @@ const has = (arr, x) => !!(arr && arr.includes(x));
 const anyOf = (arr, xs) => !!(arr && xs.some(x => arr.includes(x)));
 const NOW = new Date().getFullYear();
 
+
+const THING_Q = [
+ ["power","E","Это работает от электричества или батареек?","Does it run on electricity or batteries?"],
+ ["power","S","У этого есть экран?","Does it have a screen?"],
+ ["power","B","У этого есть кнопки или клавиши?","Does it have buttons or keys?"],
+ ["power","MV","У этого есть мотор или движущиеся части?","Does it have a motor or moving parts?"],
+ ["place","K","Это обычно бывает на кухне?","Is it usually in the kitchen?"],
+ ["place","T","Это обычно в ванной?","Is it usually in the bathroom?"],
+ ["place","L","Это обычно в спальне?","Is it usually in the bedroom?"],
+ ["place","O","Это нужно для учёбы или работы в офисе?","Is it used for school or office work?"],
+ ["place","G","Этим пользуются на улице, в саду или на даче?","Is it used outdoors or in the garden?"],
+ ["use","C","Этим готовят или греют еду?","Is it used to cook or heat food?"],
+ ["use","U","Из этого едят или пьют?","Do you eat or drink from it?"],
+ ["use","W","Этим пишут или рисуют?","Do you write or draw with it?"],
+ ["use","CN","Это для уборки или чистоты?","Is it for cleaning?"],
+ ["use","CM","Это помогает общаться или передавать сообщения?","Does it help people communicate?"],
+ ["use","TM","Это что-то измеряет или показывает время?","Does it measure something or show time?"],
+ ["use","MN","Это связано с деньгами?","Is it related to money?"],
+ ["use","MD","Это связано со здоровьем?","Is it related to health?"],
+ ["use","TL","Это инструмент для ремонта или стройки?","Is it a tool for repair or building?"],
+ ["use","SP","Это связано со спортом?","Is it related to sports?"],
+ ["use","TY","С этим играют?","Do people play with it?"],
+ ["use","MU","Это связано с музыкой?","Is it related to music?"],
+ ["use","V","На этом можно куда-то ехать?","Can you ride or travel in it?"],
+ ["wear","CL","Это надевают на себя?","Do you wear it?"],
+ ["wear","H","Это носят на голове?","Is it worn on the head?"],
+ ["wear","FT","Это надевают на ноги?","Is it worn on the feet?"],
+ ["wear","J","Это украшение или аксессуар?","Is it jewellery or an accessory?"],
+ ["form","F","Это мебель?","Is it furniture?"],
+ ["form","WH","У этого есть колёса?","Does it have wheels?"],
+ ["form","SH","Этим можно порезаться или уколоться?","Can it cut or prick you?"],
+ ["form","HT","Это нагревается?","Does it get hot?"],
+ ["form","CO","Это связано с холодом?","Is it related to cold?"],
+ ["form","WA","Это связано с водой или жидкостью?","Is it related to water or liquid?"],
+ ["form","CT","В этом что-то хранят или носят?","Do you keep or carry things in it?"],
+ ["form","LT","Это светит?","Does it give light?"],
+ ["form","SN","Это издаёт звуки?","Does it make sounds?"],
+ ["size","P","Это помещается в карман?","Does it fit in a pocket?"],
+ ["size","BIG","Это больше человека?","Is it bigger than a person?"],
+ ["size","HV","Это слишком тяжёлое, чтобы поднять одному?","Is it too heavy for one person to lift?"],
+ ["material","ME","Это сделано из металла?","Is it made of metal?"],
+ ["material","WO","Это из дерева?","Is it made of wood?"],
+ ["material","PL","Это из пластика?","Is it made of plastic?"],
+ ["material","GL","В этом есть стекло?","Does it have glass?"],
+ ["material","FA","Это мягкое, из ткани?","Is it soft, made of fabric?"],
+ ["material","PA","Это из бумаги?","Is it made of paper?"],
+ ["life","D","Этим пользуются почти каждый день?","Do people use it almost every day?"],
+ ["life","EV","Это есть почти в каждом доме?","Is it in almost every home?"],
+ ["life","CH","Это в основном для детей?","Is it mostly for children?"],
+ ["life","OLD","Это существовало сто лет назад?","Did it exist 100 years ago?"],
+ ["life","LX","Это дорогая вещь, роскошь?","Is it an expensive luxury item?"]
+];
 function g2Questions(){
   const L = lang === "ru" ? 0 : 1, qs = [], meta = G2.meta, P = G2.kind === "people";
   const add = (fam, id, ru, en, f, opts) => qs.push(Object.assign({fam, id, t: L ? en : ru, f}, opts || {}));
   const countryName = c => (meta.countries[c] || {})[L ? "en" : "ru"] || c;
   const contOf = it => { const c = it.c && it.c[0]; return c && meta.countries[c] ? meta.countries[c].ct : null; };
+  if (G2.kind === "things") {
+    THING_Q.forEach(([fam, code, ru, en]) => add(fam, "f:" + code, ru, en, it => it.f.includes(code)));
+    return qs;
+  }
   // регионы и континенты
   Object.keys(REG).forEach(r => add("region", "r:" + r, REG_Q[r][P ? 0 : 2], REG_Q[r][P ? 1 : 3], it => inReg(it, r)));
   ["Q46","Q48","Q49","Q15","Q18"].forEach(k => add("region", "ct:" + k,
@@ -1429,11 +1492,14 @@ function g2Pick(){
 
 function g2Answer(a){
   const q = G2.q; if (!q) return;
+  G2.stack.push({w: G2.w.slice(), asked: [...G2.asked], fam: G2.famHist.slice(), n: G2.n, q, hist: G2.hist.length});
+  if (G2.stack.length > 40) G2.stack.shift();
   G2.asked.add(q.id); G2.famHist.push(q.fam); G2.hist.push(q.t + " → " + a);
   for (let i = 0; i < G2.items.length; i++) {
     if (!G2.w[i]) continue;
     const v = q.f(G2.items[i]);
-    const L = v == null ? 0.5 : 0.08 + 0.84 * (v ? a : 1 - a);   // мягко: в базе тоже бывают ошибки
+    // мягко: человек может нажать не то, а в базе тоже бывают ошибки — один ответ никого не «убивает»
+    const L = v == null ? 0.5 : 0.12 + 0.76 * (v ? a : 1 - a);
     G2.w[i] *= L;
   }
   g2Next();
@@ -1448,10 +1514,12 @@ function g2Top(){
 function g2Next(){
   G2.n++;
   const top = g2Top();
-  const ready = (G2.n > 6 && (top.pa > 0.55 || top.ratio > 6)) || G2.n > 22;
+  if (top.a < 0 || !G2.w[top.a]) return g2End(false);
+  const ready = G2.n > 6 && G2.n >= G2.minNext && (top.pa > 0.55 || top.ratio > 6);
   const q = ready ? null : g2Pick();
-  if (!q || G2.n > 30) return g2Guess(top.a);
+  if (!q) return g2Guess(top.a);
   G2.q = q;
+  $("g2-undo").hidden = !G2.stack.length;
   $("g2-num").textContent = T[lang].g2num.replace("{n}", G2.n);
   $("g2-text").textContent = q.t;
   show("g2q");
@@ -1466,14 +1534,16 @@ function g2Guess(i){
   $("g2-name").textContent = lang === "ru" ? it.n : (it.e || it.n);
   $("g2-desc").textContent = it.d || "";
   const src = g2Img(it), pic = $("g2-pic"), em = $("g2-emoji");
-  pic.hidden = !src; em.hidden = !!src;
+  pic.hidden = !src; em.hidden = !!src; em.textContent = G2.kind === "things" ? "🧸" : "🧠";
   if (src) { pic.src = src; pic.onerror = () => { pic.hidden = true; em.hidden = false; }; }
+  if (it.w) enwikiImage(it.w).then(u => { if (u && G2.cur === i) { pic.src = u; pic.hidden = false; em.hidden = true; } });
   pic.classList.remove("pop"); void pic.offsetWidth; pic.classList.add("pop");
   show("g2guess");
 }
 
 function g2End(win){
   const it = win ? G2.items[G2.cur] : null;
+  $("g2-cont").hidden = true; $("g2-giveup").hidden = true; $("g2-again").hidden = false;
   $("g2-endemoji").textContent = win ? "😎" : "🤯";
   $("g2-endtitle").textContent = T[lang][win ? "g2winT" : "g2loseT"];
   $("g2-endsub").textContent = T[lang][win ? "g2winS" : "g2loseS"].replace("{n}", G2.n);
@@ -1495,20 +1565,40 @@ async function g2Start(kind){
   } catch(e) { $("g2-endemoji").textContent = "📡"; $("g2-endtitle").textContent = ""; $("g2-endsub").textContent = T[lang].g2err; return show("g2end"); }
   G2.items = G2.cache[kind];
   G2.w = G2.items.map(it => Math.pow(it.s || 10, 1.3));   // известные — вероятнее
-  G2.asked = new Set(); G2.famHist = []; G2.n = 0; G2.guesses = 0; G2.hist = []; G2.q = null;
+  G2.asked = new Set(); G2.famHist = []; G2.n = 0; G2.guesses = 0; G2.hist = []; G2.q = null; G2.stack = []; G2.rejected = new Set(); G2.minNext = 0;
   g2Next();
 }
 
 $("go2").onclick = () => show("g2pick");
 $("g2-people").onclick = () => g2Start("people");
 $("g2-places").onclick = () => g2Start("places");
+$("g2-things").onclick = () => g2Start("things");
 document.querySelectorAll("#s-g2q .ans").forEach(b => b.onclick = () => g2Answer(parseFloat(b.dataset.a)));
 $("g2-right").onclick = () => { G2.hist.push("угадал: " + G2.items[G2.cur].n); g2End(true); };
 $("g2-wrong").onclick = () => {
   G2.hist.push("не то: " + G2.items[G2.cur].n);
-  G2.w[G2.cur] = 0;
-  if (G2.guesses >= 3) return g2End(false);
-  G2.n = Math.max(G2.n, 8) - 1; g2Next();
+  G2.w[G2.cur] = 0; G2.rejected.add(G2.cur);
+  G2.n--; G2.minNext = G2.n + 4;           // после промаха — ещё несколько вопросов перед новой догадкой
+  if (G2.guesses % 3 === 0) return g2Ask();  // каждые 3 промаха — спросить, продолжать ли
+  g2Next();
+};
+function g2Ask(){
+  $("g2-endemoji").textContent = "🤔";
+  $("g2-endtitle").textContent = T[lang].g2contT;
+  $("g2-endsub").textContent = T[lang].g2contS;
+  $("g2-cont").hidden = false; $("g2-giveup").hidden = false; $("g2-again").hidden = true;
+  show("g2end");
+}
+$("g2-cont").onclick = () => g2Next();
+$("g2-giveup").onclick = () => g2End(false);
+$("g2-undo").onclick = () => {
+  const sn = G2.stack.pop(); if (!sn) return;
+  G2.w = sn.w; G2.rejected.forEach(i => G2.w[i] = 0);
+  G2.asked = new Set(sn.asked); G2.famHist = sn.fam; G2.n = sn.n; G2.q = sn.q; G2.hist.length = sn.hist;
+  $("g2-num").textContent = T[lang].g2num.replace("{n}", G2.n);
+  $("g2-text").textContent = sn.q.t;
+  $("g2-undo").hidden = !G2.stack.length;
+  show("g2q");
 };
 $("g2-again").onclick = () => show("g2pick");
 $("menu").onclick = () => { runId++; show("intro"); };
