@@ -4,157 +4,202 @@
   sparql wdqs failed: failed: https://query.wikidata.org/sparql?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFIX+wikibase%3A
 people(world) candidates: 0
   sparql via qlever rows: 0
-  sparql via wdqs rows: 4378
-people(cis) candidates: 3190
+  sparql via wdqs rows: 11292
+people(cis) candidates: 8252
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
+  retry 2 HTTPError HTTP Error 429: Too Many Requests
+  sparql qlever failed: failed: https://qlever.cs.uni-freiburg.de/api/wikidata?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFI
+  sparql via wdqs rows: 96
+places:tower candidates: 85
+  sparql via qlever rows: 315
+places:skyscraper candidates: 315
+  sparql via qlever rows: 201
+places:bridge candidates: 187
+  sparql via qlever rows: 863
+places:church candidates: 780
+  sparql via qlever rows: 282
+places:mosque candidates: 282
+  sparql via qlever rows: 225
+places:temple candidates: 223
+  sparql via qlever rows: 278
+places:palace candidates: 272
+  sparql via qlever rows: 369
+places:castle candidates: 363
   sparql via qlever rows: 0
-  sparql via wdqs rows: 52
-places:tower candidates: 44
+  sparql via wdqs rows: 524
+places:stadium candidates: 521
   sparql via qlever rows: 0
-  sparql via wdqs rows: 158
-places:skyscraper candidates: 158
+  sparql via wdqs rows: 941
+places:museum candidates: 795
   sparql via qlever rows: 0
-  sparql via wdqs rows: 94
-places:bridge candidates: 88
+  sparql via wdqs rows: 384
+places:statue candidates: 351
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
+  retry 2 HTTPError HTTP Error 429: Too Many Requests
+  sparql qlever failed: failed: https://qlever.cs.uni-freiburg.de/api/wikidata?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFI
+  sparql via wdqs rows: 12
+places:pyramid candidates: 12
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
   sparql via qlever rows: 0
-  sparql via wdqs rows: 402
-places:church candidates: 359
+  sparql via wdqs rows: 193
+places:theatre candidates: 155
   sparql via qlever rows: 0
-  sparql via wdqs rows: 132
-places:mosque candidates: 132
+  sparql via wdqs rows: 26
+places:dam candidates: 26
   sparql via qlever rows: 0
-  sparql via wdqs rows: 113
-places:temple candidates: 112
+  sparql via wdqs rows: 15
+places:wall candidates: 15
   sparql via qlever rows: 0
-  sparql via wdqs rows: 164
-places:palace candidates: 160
+  sparql via wdqs rows: 153
+places:square candidates: 153
   sparql via qlever rows: 0
-  sparql via wdqs rows: 168
-places:castle candidates: 162
+  sparql via wdqs rows: 731
+places:park candidates: 715
   sparql via qlever rows: 0
-  sparql via wdqs rows: 294
-places:stadium candidates: 292
+  sparql via wdqs rows: 1440
+places:ruins candidates: 1221
   sparql via qlever rows: 0
-  sparql via wdqs rows: 507
-places:museum candidates: 417
+  sparql via wdqs rows: 15
+places:lighthouse candidates: 15
   sparql via qlever rows: 0
-  sparql via wdqs rows: 192
-places:statue candidates: 173
+  sparql via wdqs rows: 2049
+places:airport candidates: 1475
   sparql via qlever rows: 0
-  sparql via wdqs rows: 10
-places:pyramid candidates: 10
+  sparql via wdqs rows: 872
+places:station candidates: 850
   sparql via qlever rows: 0
-  sparql via wdqs rows: 113
-places:theatre candidates: 92
+  sparql via wdqs rows: 154
+places:tomb candidates: 149
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
+  retry 2 HTTPError HTTP Error 429: Too Many Requests
+  sparql qlever failed: failed: https://qlever.cs.uni-freiburg.de/api/wikidata?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFI
+  sparql via wdqs rows: 82
+places:hotel candidates: 68
   sparql via qlever rows: 0
-  sparql via wdqs rows: 7
-places:dam candidates: 7
+  sparql via wdqs rows: 27
+places:government candidates: 27
   sparql via qlever rows: 0
-  sparql via wdqs rows: 9
-places:wall candidates: 9
+  sparql via wdqs rows: 382
+places:mountain candidates: 382
   sparql via qlever rows: 0
-  sparql via wdqs rows: 83
-places:square candidates: 83
+  sparql via wdqs rows: 152
+places:volcano candidates: 142
   sparql via qlever rows: 0
-  sparql via wdqs rows: 383
-places:park candidates: 372
+  sparql via wdqs rows: 32
+places:waterfall candidates: 32
   sparql via qlever rows: 0
-  sparql via wdqs rows: 858
-places:ruins candidates: 703
+  retry 1 IncompleteRead IncompleteRead(0 bytes read)
+  sparql via wdqs rows: 207
+places:lake candidates: 207
+  sparql via qlever rows: 6
+places:canyon candidates: 6
+  sparql via qlever rows: 810
+places:island candidates: 810
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 923
+places:river candidates: 923
+  sparql via qlever rows: 0
+  sparql via wdqs rows: 47
+places:desert candidates: 47
+  sparql via qlever rows: 14
+places:glacier candidates: 14
+  sparql via qlever rows: 20
+places:cave candidates: 20
   sparql via qlever rows: 5
-places:lighthouse candidates: 5
-  sparql via qlever rows: 1191
-places:airport candidates: 792
-  sparql via qlever rows: 137
-places:station candidates: 125
-  sparql via qlever rows: 67
-places:tomb candidates: 64
-  sparql via qlever rows: 39
-places:hotel candidates: 32
-  sparql via qlever rows: 13
-places:government candidates: 13
-  sparql via qlever rows: 189
-places:mountain candidates: 189
-  sparql via qlever rows: 75
-places:volcano candidates: 68
-  sparql via qlever rows: 12
-places:waterfall candidates: 12
-  sparql via qlever rows: 113
-places:lake candidates: 113
-  sparql via qlever rows: 2
-places:canyon candidates: 2
-  sparql via qlever rows: 453
-places:island candidates: 453
-  sparql via qlever rows: 470
-places:river candidates: 470
-  sparql via qlever rows: 30
-places:desert candidates: 30
-  sparql via qlever rows: 4
-places:glacier candidates: 4
-  sparql via qlever rows: 12
-places:cave candidates: 12
-  sparql via qlever rows: 1
-places:reef candidates: 1
-  sparql via qlever rows: 5
-places:beach candidates: 5
-places total: 5414
-  sparql via qlever rows: 1765
-people:Q30 Q145 Q174193 Q17 candidates: 1632
-  sparql via qlever rows: 764
-people:Q142 Q70972 Q71084 Q candidates: 662
+places:reef candidates: 5
+  sparql via qlever rows: 7
+places:beach candidates: 7
+places total: 11014
+  sparql via qlever rows: 5485
+people:Q30 Q145 Q174193 Q17 candidates: 5130
+  sparql via qlever rows: 2150
+people:Q142 Q70972 Q71084 Q candidates: 1977
+  sparql via qlever rows: 1423
+people:Q38 Q172579 Q29 Q807 candidates: 1293
   sparql via qlever rows: 0
-  sparql via wdqs rows: 436
-people:Q38 Q172579 Q29 Q807 candidates: 391
+  retry 1 JSONDecodeError Expecting property name enclosed in double quotes: line 7102 column 4 (char 180224)
+  retry 2 JSONDecodeError Expecting property name enclosed in double quotes: line 7102 column 4 (char 180224)
+  sparql wdqs failed: failed: https://query.wikidata.org/sparql?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFIX+wikibase%3A
+people:Q36 Q213 Q218 Q28 Q3 candidates: 0
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
   sparql via qlever rows: 0
-  sparql via wdqs rows: 257
-people:Q36 Q213 Q218 Q28 Q3 candidates: 256
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 236
-people:Q1747689 Q17167 Q227 candidates: 230
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 237
-people:Q148 Q8733 Q17 Q1887 candidates: 223
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 190
-people:Q96 Q155 Q414 Q298 Q candidates: 187
-  sparql via qlever rows: 0
-  sparql via wdqs rows: 337
-people:Q15180 Q159 Q34266 Q candidates: 246
-top titles: 8893
-  resolved ru → entities total 3606
-  resolved en → entities total 7372
-popular: people 4121 other 39
-fetching extra people: 5270
-  entities 0 / 5270
-  entities 1000 / 5270
-  entities 2000 / 5270
-  entities 3000 / 5270
-  entities 4000 / 5270
-  entities 5000 / 5270
-fetching extra places: 5386
-  entities 0 / 5386
-  entities 1000 / 5386
-  entities 2000 / 5386
-  entities 3000 / 5386
-  entities 4000 / 5386
-  entities 5000 / 5386
-fetching aux labels: 17749
-  entities 0 / 17749
-  entities 1000 / 17749
-  entities 2000 / 17749
-  entities 3000 / 17749
-  entities 4000 / 17749
-  entities 5000 / 17749
-  entities 6000 / 17749
-  entities 7000 / 17749
-  entities 8000 / 17749
-  entities 9000 / 17749
-  entities 10000 / 17749
-  entities 11000 / 17749
-  entities 12000 / 17749
-  entities 13000 / 17749
-  entities 14000 / 17749
-  entities 15000 / 17749
-  entities 16000 / 17749
-  entities 17000 / 17749
+  sparql via wdqs rows: 504
+people:Q1747689 Q17167 Q227 candidates: 490
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
+  retry 2 HTTPError HTTP Error 429: Too Many Requests
+  sparql qlever failed: failed: https://qlever.cs.uni-freiburg.de/api/wikidata?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFI
+  sparql via wdqs rows: 1396
+people:Q148 Q8733 Q17 Q1887 candidates: 1280
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
+  retry 2 HTTPError HTTP Error 429: Too Many Requests
+  sparql qlever failed: failed: https://qlever.cs.uni-freiburg.de/api/wikidata?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFI
+  sparql via wdqs rows: 811
+people:Q96 Q155 Q414 Q298 Q candidates: 805
+  retry 1 HTTPError HTTP Error 429: Too Many Requests
+  retry 2 HTTPError HTTP Error 429: Too Many Requests
+  sparql qlever failed: failed: https://qlever.cs.uni-freiburg.de/api/wikidata?query=PREFIX+wd%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fentity%2F%3E%0APREFIX+wdt%3A+%3Chttp%3A%2F%2Fwww.wikidata.org%2Fprop%2Fdirect%2F%3E%0APREFI
+  sparql via wdqs rows: 1143
+people:Q15180 Q159 Q34266 Q candidates: 835
+top titles: 13918
+  resolved ru → entities total 5249
+  resolved en → entities total 11487
+popular: people 6053 other 66
+fetching extra people: 16066
+  entities 0 / 16066
+  entities 1000 / 16066
+  entities 2000 / 16066
+  entities 3000 / 16066
+  entities 4000 / 16066
+  entities 5000 / 16066
+  entities 6000 / 16066
+  entities 7000 / 16066
+  entities 8000 / 16066
+  entities 9000 / 16066
+  entities 10000 / 16066
+  entities 11000 / 16066
+  entities 12000 / 16066
+  entities 13000 / 16066
+  entities 14000 / 16066
+  entities 15000 / 16066
+  entities 16000 / 16066
+fetching extra places: 10964
+  entities 0 / 10964
+  entities 1000 / 10964
+  entities 2000 / 10964
+  entities 3000 / 10964
+  entities 4000 / 10964
+  entities 5000 / 10964
+  entities 6000 / 10964
+  entities 7000 / 10964
+  entities 8000 / 10964
+  entities 9000 / 10964
+  entities 10000 / 10964
+fetching aux labels: 25884
+  entities 0 / 25884
+  entities 1000 / 25884
+  entities 2000 / 25884
+  entities 3000 / 25884
+  entities 4000 / 25884
+  entities 5000 / 25884
+  entities 6000 / 25884
+  entities 7000 / 25884
+  entities 8000 / 25884
+  entities 9000 / 25884
+  entities 10000 / 25884
+  entities 11000 / 25884
+  entities 12000 / 25884
+  entities 13000 / 25884
+  entities 14000 / 25884
+  entities 15000 / 25884
+  entities 16000 / 25884
+  entities 17000 / 25884
+  entities 18000 / 25884
+  entities 19000 / 25884
+  entities 20000 / 25884
+  entities 21000 / 25884
+  entities 22000 / 25884
+  entities 23000 / 25884
+  entities 24000 / 25884
+  entities 25000 / 25884
   entities 0 / 10
-DONE people: 7000 places: 2500 countries: 592
+DONE people: 14000 places: 5000 countries: 697
