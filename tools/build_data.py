@@ -67,7 +67,7 @@ def top_titles():
     views = {}
     d = datetime.date.today().replace(day=1)
     months = []
-    for _ in range(12):
+    for _ in range(24):
         d = (d - datetime.timedelta(days=1)).replace(day=1); months.append(d)
     for wiki in ["ru", "en"]:
         for m in months:
@@ -237,8 +237,8 @@ def place_groups(type_labels):
 
 def trim(people, places):
     """Ужимаем базу для телефона: убираем малоизвестное и лишние поля."""
-    people = [p for p in people if p["s"] >= 20]
-    people.sort(key=lambda x: -x["s"]); people = people[:7000]
+    people = [p for p in people if p["s"] >= 14]
+    people.sort(key=lambda x: -x["s"]); people = people[:14000]
     for p in people:
         p["d"] = (p.get("d") or "")[:70]
         if p.get("e") == p.get("n"): p.pop("e", None)
@@ -246,8 +246,8 @@ def trim(people, places):
             if not p.get(k): p.pop(k, None)
         p.pop("id", None)
     skip = {"airport", "station"}
-    places = [x for x in places if x["s"] >= 30 and not (set(x["t"]) & skip and len(set(x["t"]) - skip - {"religious", "nature"}) == 0)]
-    places.sort(key=lambda x: -x["s"]); places = places[:2500]
+    places = [x for x in places if x["s"] >= 20 and not (set(x["t"]) & skip and len(set(x["t"]) - skip - {"religious", "nature"}) == 0)]
+    places.sort(key=lambda x: -x["s"]); places = places[:5000]
     for x in places:
         x["t"] = [t for t in x["t"] if t not in skip]
         x["d"] = (x.get("d") or "")[:70]
@@ -258,7 +258,7 @@ def trim(people, places):
 def main():
     os.makedirs("data", exist_ok=True)
     big = int(os.environ.get("BIG_SL", "90"))
-    cis = int(os.environ.get("CIS_SL", "25"))
+    cis = int(os.environ.get("CIS_SL", "16"))
     plc = int(os.environ.get("PLACE_SL", "55"))
 
     people = candidates(f"""SELECT ?x ?sl WHERE {{ ?x wdt:P31 wd:Q5 . ?x wikibase:sitelinks ?sl . FILTER(?sl >= {big}) }}""", "people(world)")
@@ -268,7 +268,7 @@ def main():
     places = {}
     for g, qs in PLACE_TYPES.items():
         vals = " ".join("wd:" + q for q in qs)
-        lim = 40 if g in NATURE else 25
+        lim = 30 if g in NATURE else 18
         places.update(candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?t {{ {vals} }} ?x wdt:P31 ?t . ?x wikibase:sitelinks ?sl . FILTER(?sl >= {lim}) }}""", "places:" + g))
     log("places total:", len(places))
     COUNTRY_BATCHES = [
@@ -277,7 +277,7 @@ def main():
         "Q96 Q155 Q414 Q298 Q739 Q408 Q664 Q258 Q1033 Q115", "Q15180 Q159 Q34266 Q212 Q184 Q232 Q265 Q230 Q399 Q227"]
     for batch in COUNTRY_BATCHES:
         vals = " ".join("wd:" + q for q in batch.split())
-        people.update(candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?c {{ {vals} }} ?x wdt:P27 ?c . ?x wdt:P31 wd:Q5 . ?x wikibase:sitelinks ?sl . FILTER(?sl >= 70) }}""", "people:" + batch[:20]))
+        people.update(candidates(f"""SELECT ?x ?sl WHERE {{ VALUES ?c {{ {vals} }} ?x wdt:P27 ?c . ?x wdt:P31 wd:Q5 . ?x wikibase:sitelinks ?sl . FILTER(?sl >= 45) }}""", "people:" + batch[:20]))
     # не здания (страны, города и т.п.) отсекаем позже по наличию типа
 
     # Главный источник — популярные статьи Википедии (кого реально ищут люди)
